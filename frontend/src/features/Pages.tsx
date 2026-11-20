@@ -48,7 +48,7 @@ function ChartPanel() {
   );
 }
 
-export function OverviewWelcomePanel({ onStart }: { onStart: () => void }) {
+export function OverviewWelcomePanel({ onStart, onNavigate }: { onStart: () => void; onNavigate?: (p: PageId) => void }) {
   return (
     <div className="welcome-panel">
       <div className="welcome-copy">
@@ -56,8 +56,8 @@ export function OverviewWelcomePanel({ onStart }: { onStart: () => void }) {
         <h2>Enterprise Incident Workbench</h2>
         <p>Investigate incidents with linked evidence, specialist analysis and controlled operational handoffs — all in one workspace.</p>
         <div className="welcome-actions">
-          <Button variant="primary" onClick={onStart}><Plus size={16} /> Start Investigation</Button>
-          <Button variant="subtle">Explore runtime <ArrowRight size={15} /></Button>
+          <Button variant="secondary" onClick={onStart}><Plus size={16} /> Quick investigation</Button>
+          <Button variant="subtle" onClick={() => onNavigate?.('investigations')}>Explore all cases <ArrowRight size={15} /></Button>
         </div>
         <div className="welcome-meta">
           <span><CheckCircle2 size={14} /> Policy engine active</span>
