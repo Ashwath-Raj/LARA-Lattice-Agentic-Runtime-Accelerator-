@@ -1,110 +1,63 @@
-# LARA Design Kit — Bright Lattice
+# LARA — Google Cloud Build Pack
 
 **LARA — Lattice Agentic Runtime Accelerator**  
-Visual asset and workflow reference pack for the LARA prototype.
+**Build target:** 12-hour, two-person, cloud-hosted prototype  
+**Architecture rule:** Every runtime component, model invocation, persistent store, build artifact and deployed user interface must be hosted on Google Cloud. No external managed runtime/database/model provider is permitted in this prototype.
 
-This archive contains a compact, reusable SVG asset library, a CSS theme, machine-readable design tokens, and workflow/design documentation. It is intended to be extracted into the frontend repository and used as the visual foundation for the LARA Workbench and Runtime Console.
+## Read this first
 
-## What is included
+1. `docs/00_EXECUTIVE_SUMMARY.md`
+2. `docs/01_LOCKED_SCOPE_AND_NON_NEGOTIABLES.md`
+3. `docs/02_GCP_TARGET_ARCHITECTURE.md`
+4. `docs/03_BACKEND_WORKFLOW_SPEC.md`
+5. `docs/04_INFORMATION_HIGHWAYS_SPEC.md`
+6. `docs/05_EVOLUTION_ENGINE_SPEC.md`
+7. `docs/06_IDENTITY_RBAC_ABAC_SPEC.md`
+8. `docs/07_SYNTHETIC_DATA_AND_SOP_SPEC.md`
+9. `docs/08_UX_FLOW_AND_SCREEN_SPEC.md`
+10. `docs/09_API_CONTRACT.md`
+11. `docs/10_TWO_PERSON_12_HOUR_PLAN.md`
+12. `docs/11_GCP_DEPLOYMENT_RUNBOOK.md`
+13. `docs/12_ACCEPTANCE_CHECKLIST.md`
+14. `docs/13_ANTIGRAVITY_EXECUTION_RULES.md`
 
-```text
-LARA_Design_Kit/
-├── README.md
-├── assets/
-│   ├── brand/
-│   │   ├── lara-mark.svg
-│   │   ├── lara-wordmark.svg
-│   │   ├── lara-palette.svg
-│   │   └── lara-hero-art.svg
-│   ├── icons/
-│   │   ├── agent.svg
-│   │   ├── graph.svg
-│   │   ├── policy.svg
-│   │   ├── evolution.svg
-│   │   ├── tool.svg
-│   │   ├── memory.svg
-│   │   ├── audit.svg
-│   │   ├── model.svg
-│   │   ├── approval.svg
-│   │   └── sandbox.svg
-│   ├── illustrations/
-│   │   ├── information-highways.svg
-│   │   ├── agent-evolution.svg
-│   │   ├── identity-governance.svg
-│   │   ├── end-to-end-workflow.svg
-│   │   ├── runtime-architecture.svg
-│   │   └── knowledge-fabric.svg
-│   └── patterns/
-│       └── lattice-grid.svg
-├── styles/
-│   └── lara-theme.css
-├── tokens/
-│   └── lara-design-tokens.json
-└── docs/
-    ├── DESIGN_LANGUAGE.md
-    └── WORKFLOWS.md
-```
+## Folder map
 
-## Quick integration
+- `docs/`: authoritative implementation and product documentation.
+- `contracts/`: OpenAPI contract and request/response examples.
+- `data/synthetic/`: deterministic synthetic enterprise records.
+- `data/sops/`: synthetic SOPs and workflow rules used in the demo.
+- `data/fixtures/`: route, identity and evolution evaluation fixtures.
+- `prompts/`: versioned base instructions for the three specialist agents and evolution engine.
+- `scripts/`: seed and deployment scripts.
+- `design/`: copied Bright Lattice assets and design-system reference.
+- `checklists/`: printable build, release and demo checklists.
 
-1. Extract this folder into the frontend repository, for example `src/design/lara-kit/` or `public/lara/`.
-2. Import `styles/lara-theme.css` into the application entry point.
-3. Use the SVGs directly as images, or copy them into the design system's asset directory.
-4. Read `tokens/lara-design-tokens.json` from the design-token pipeline if the project has one.
-5. Use `docs/WORKFLOWS.md` as the flow reference when implementing the Workbench and Runtime Console.
+## Source of truth and conflict resolution
 
-Example CSS import:
+This pack supersedes earlier LARA buildathon documents wherever they conflict. In particular:
 
-```css
-@import "./design/lara-kit/styles/lara-theme.css";
-```
+- Product name is **LARA — Lattice Agentic Runtime Accelerator**.
+- The product is a general-purpose enterprise agentic runtime, not a local-only runtime or an industrial chatbot.
+- **Google Cloud-only deployment is mandatory.**
+- Neo4j Aura is removed. It is not a Google Cloud-native service and is not allowed in this build.
+- The graph is stored as canonical node/edge documents in **Cloud Firestore**. The backend builds a bounded in-memory adjacency index per process and resolves routes. Firestore remains the source of truth.
+- Gemini is called through **Vertex AI** using the Google Gen AI SDK and the Cloud Run service identity / Application Default Credentials. No Gemini Developer API key is required for the runtime path.
+- Frontend and backend are built into one deployable application and served by **Cloud Run**. No external frontend hosting.
+- Do not add unapproved services, frameworks, providers or architecture changes.
 
-Example React use:
+## What “Google Cloud-only” means here
 
-```tsx
-<img src="/lara/brand/lara-wordmark.svg" alt="LARA — Lattice Agentic Runtime Accelerator" />
-<img src="/lara/illustrations/information-highways.svg" alt="Dynamic Information Highways architecture" />
-```
+Allowed runtime services: Cloud Run, Vertex AI, Firestore Native mode, Cloud Storage, Secret Manager, Artifact Registry, Cloud Build, Cloud Logging, Cloud Monitoring and Cloud IAM. Google Cloud SDKs and official Google client libraries are used from the backend. The browser reaches only the Cloud Run HTTPS origin.
 
-## Design direction
+The developers' laptops may be used as coding terminals. They are not runtime hosts, inference hosts, databases or required demo dependencies. No local model, localhost service, external database, third-party hosted model, Vercel, Netlify, Supabase, Neon, Railway, Render or Neo4j Aura.
 
-The visual system is called **Bright Lattice**. It takes the supplied image's high-energy geometry and purposeful colour relationships and translates them into a consistent interface language:
+## Prototype honesty labels
 
-- Blue = runtime / orchestration.
-- Cyan = information movement / routing.
-- Magenta = authority boundary / policy attention.
-- Orange = execution / review-needed action.
-- Green = allowed / healthy / verified.
-- Lilac = agents / knowledge.
-- Violet = evolution / adaptation.
-- Lime = active context / focus surface.
-- Near-black = typography / security boundary.
-- Pale cream-green = the main canvas.
+Every feature must be labelled in code and UI as one of:
+- `IMPLEMENTED`: actual backend functionality and persistent state.
+- `SIMULATED`: deterministic mock connector/action clearly labelled as simulated.
+- `PLANNED`: roadmap only; not shown as functioning.
+- `UNSUPPORTED`: explicitly blocked.
 
-Read `docs/DESIGN_LANGUAGE.md` before creating new screens. Keep the product bright and expressive, but do not sacrifice operational clarity or accessibility.
-
-## Workflow alignment
-
-The workflow diagrams encode the LARA concepts from the supplied SIH26117 proposal: multi-agent intelligence, institutional knowledge fabric, agentic tool highway, policy-aware execution, verified outputs, traceable institutional memory and the human-governed `Observe → Propose → Evaluate → Approve` evolution cycle. See `docs/WORKFLOWS.md` for the complete flow definitions and security invariants.
-
-The current buildathon implementation direction is a **cloud-hosted Gemini-backed prototype behind a model adapter**. The historical SIH proposal includes sovereign/on-premise and open-weight deployment concepts; those remain future deployment directions, not a requirement for this cloud-hosted demo. The current LARA name expansion is **Lattice Agentic Runtime Accelerator**.
-
-## Important implementation notes
-
-- SVG diagrams are conceptual reference assets. Connect them to real backend state before presenting them as live system telemetry.
-- The Information Highways graphic must ultimately reflect actual permission-filtered route decisions from the backend.
-- The Evolution graphic must reflect actual version proposals, evaluation results, approval events and rollback state.
-- The governance graphic must reflect backend RBAC/ABAC decisions, not frontend-only role switching.
-- Do not claim simulated connectors are production integrations.
-- Do not claim performance improvements unless measured by a repeatable benchmark.
-- Keep the security constitution, access policies and tenant boundaries outside the autonomous evolution loop.
-
-## Asset format and editing
-
-All graphics are SVG and can be edited in Figma, Inkscape or a code editor. The CSS theme is framework-agnostic and can be adapted to React, Next.js or another frontend. No external font files or third-party image dependencies are bundled.
-
-## Source basis
-
-- User-provided visual reference image: geometric, saturated, playful composition and palette.
-- User-provided SIH26117 proposal PDF: user-flow, multi-model/multi-agent intelligence, institutional knowledge, tool highway, controlled self-evolution, adaptive execution environment, human review and audit concepts.
-- Current LARA product direction: Lattice Agentic Runtime Accelerator; adaptive, model-independent and governed enterprise runtime.
+Never show seeded sample counts or simulated actions as real customer data or real enterprise integrations.

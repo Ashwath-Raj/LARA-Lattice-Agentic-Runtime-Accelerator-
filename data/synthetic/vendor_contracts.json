@@ -1,0 +1,18 @@
+{
+  "synthetic": true,
+  "tenant_id": "demo-enterprise",
+  "records": [
+    {
+      "contract_id": "VND-CON-88",
+      "vendor": "Asterion Components (fictional)",
+      "asset_id": "P-204",
+      "terms_summary": "Synthetic confidential warranty coverage and inspection terms for demo only.",
+      "classification": "CONFIDENTIAL",
+      "allowed_roles": [
+        "supervisor",
+        "runtime_admin"
+      ],
+      "purpose_restriction": "incident_investigation"
+    }
+  ]
+}

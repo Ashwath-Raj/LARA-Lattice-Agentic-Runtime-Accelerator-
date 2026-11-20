@@ -1,0 +1,58 @@
+[
+  {
+    "case_id": "ROUTE-OP-01",
+    "principal_id": "usr_operator_01",
+    "task": "Investigate INC-204",
+    "expected_allowed_sources": [
+      "source:incident-log",
+      "source:asset-registry",
+      "source:maintenance-history",
+      "source:sop-current"
+    ],
+    "expected_denied_sources": [
+      "source:vendor-contract"
+    ],
+    "expected_tools": [
+      "tool:calculator-safe"
+    ],
+    "forbidden_tools": [
+      "tool:maintenance-request",
+      "tool:equipment-control"
+    ]
+  },
+  {
+    "case_id": "ROUTE-SUP-01",
+    "principal_id": "usr_supervisor_01",
+    "task": "Investigate INC-204",
+    "expected_allowed_sources": [
+      "source:incident-log",
+      "source:asset-registry",
+      "source:maintenance-history",
+      "source:sop-current",
+      "source:vendor-contract"
+    ],
+    "expected_denied_sources": [],
+    "expected_tools": [
+      "tool:calculator-safe",
+      "tool:maintenance-request"
+    ],
+    "forbidden_tools": [
+      "tool:equipment-control"
+    ]
+  },
+  {
+    "case_id": "ROUTE-AUD-01",
+    "principal_id": "usr_auditor_01",
+    "task": "Inspect trace for INC-204",
+    "expected_allowed_sources": [],
+    "expected_denied_sources": [
+      "source:vendor-contract"
+    ],
+    "expected_tools": [],
+    "forbidden_tools": [
+      "tool:calculator-safe",
+      "tool:maintenance-request",
+      "tool:equipment-control"
+    ]
+  }
+]

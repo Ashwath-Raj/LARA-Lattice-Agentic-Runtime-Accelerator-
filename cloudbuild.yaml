@@ -1,0 +1,32 @@
+# Template. Confirm build/deploy service-account permissions before running.
+substitutions:
+  _REGION: asia-south1
+  _SERVICE: lara-runtime
+  _REPOSITORY: lara-build
+  _RUNTIME_SA: lara-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com
+steps:
+  - name: python:3.12-slim
+    entrypoint: bash
+    args: ['-c', 'pip install -r requirements.txt && pytest -q']
+  - name: node:22-slim
+    entrypoint: bash
+    args: ['-c', 'cd frontend && npm ci && npm run build']
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}', '.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--service-account=lara-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--port=8080'
+      - '--max-instances=2'
+      - '--concurrency=20'
+      - '--set-env-vars=APP_ENV=production,DEMO_MODE=true'
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'

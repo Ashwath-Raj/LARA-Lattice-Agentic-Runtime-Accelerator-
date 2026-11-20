@@ -1,0 +1,260 @@
+[
+  {
+    "edge_id": "edge:01",
+    "tenant_id": "demo-enterprise",
+    "source_node": "workflow:incident-investigation",
+    "target_node": "agent:research",
+    "relationship": "can_delegate_to",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:02",
+    "tenant_id": "demo-enterprise",
+    "source_node": "source:incident-log",
+    "target_node": "agent:research",
+    "relationship": "provides_context",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:03",
+    "tenant_id": "demo-enterprise",
+    "source_node": "source:asset-registry",
+    "target_node": "agent:research",
+    "relationship": "provides_context",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:04",
+    "tenant_id": "demo-enterprise",
+    "source_node": "source:maintenance-history",
+    "target_node": "agent:research",
+    "relationship": "provides_context",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:05",
+    "tenant_id": "demo-enterprise",
+    "source_node": "source:sop-current",
+    "target_node": "agent:research",
+    "relationship": "provides_context",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:06",
+    "tenant_id": "demo-enterprise",
+    "source_node": "source:vendor-contract",
+    "target_node": "agent:research",
+    "relationship": "provides_context",
+    "allowed_roles": [
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.93,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:07",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:research",
+    "target_node": "skill:evidence-synthesis",
+    "relationship": "uses_skill",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:08",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:research",
+    "target_node": "skill:sop-revision-check",
+    "relationship": "uses_skill",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:09",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:research",
+    "target_node": "agent:analysis",
+    "relationship": "can_delegate_to",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:10",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:analysis",
+    "target_node": "agent:verification",
+    "relationship": "can_delegate_to",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:11",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:analysis",
+    "target_node": "tool:calculator-safe",
+    "relationship": "can_invoke",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:12",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:analysis",
+    "target_node": "tool:maintenance-request",
+    "relationship": "can_invoke",
+    "allowed_roles": [
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  },
+  {
+    "edge_id": "edge:13",
+    "tenant_id": "demo-enterprise",
+    "source_node": "agent:analysis",
+    "target_node": "tool:equipment-control",
+    "relationship": "can_invoke",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "trust_score": 0.95,
+    "freshness_ttl_seconds": 86400,
+    "enabled": true,
+    "status": "ACTIVE",
+    "synthetic": true
+  }
+]

@@ -1,0 +1,30 @@
+{
+  "synthetic": true,
+  "tenant_id": "demo-enterprise",
+  "records": [
+    {
+      "incident_id": "INC-204",
+      "asset_id": "P-204",
+      "site": "Northstar Process Works",
+      "reported_at": "2026-11-19T08:40:00Z",
+      "reported_by": "usr_operator_01",
+      "summary": "Repeated vibration and temperature anomaly reported during routine operation.",
+      "observations": [
+        {
+          "metric": "vibration_rms",
+          "value": 7.2,
+          "unit": "mm/s",
+          "observed_at": "2026-11-19T08:20:00Z"
+        },
+        {
+          "metric": "bearing_temperature",
+          "value": 81.0,
+          "unit": "degC",
+          "observed_at": "2026-11-19T08:22:00Z"
+        }
+      ],
+      "status": "OPEN",
+      "classification": "INTERNAL"
+    }
+  ]
+}

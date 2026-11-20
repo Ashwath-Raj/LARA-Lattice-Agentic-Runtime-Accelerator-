@@ -1,0 +1,22 @@
+{
+  "synthetic": true,
+  "tenant_id": "demo-enterprise",
+  "records": [
+    {
+      "record_id": "MNT-771",
+      "asset_id": "P-204",
+      "date": "2026-08-11",
+      "summary": "Bearing inspection; no replacement recorded.",
+      "outcome": "MONITOR",
+      "classification": "INTERNAL"
+    },
+    {
+      "record_id": "MNT-806",
+      "asset_id": "P-204",
+      "date": "2026-10-03",
+      "summary": "Vibration observation recorded; follow-up inspection recommended.",
+      "outcome": "FOLLOW_UP_RECOMMENDED",
+      "classification": "INTERNAL"
+    }
+  ]
+}

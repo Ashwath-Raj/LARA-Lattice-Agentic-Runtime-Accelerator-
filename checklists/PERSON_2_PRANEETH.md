@@ -1,0 +1,23 @@
+# Person 2 — Praneeth: Frontend + UX Checklist
+
+- [ ] Read UX spec and Bright Lattice design language.
+- [ ] Inspect existing frontend before replacing files.
+- [ ] Create app shell, router and navigation.
+- [ ] Implement demo login/identity switch using API client.
+- [ ] Implement Workbench home and new task form.
+- [ ] Implement task timeline and agent activity.
+- [ ] Implement Information Highways graph view from backend route data.
+- [ ] Implement route explanation and selected/rejected path states.
+- [ ] Implement agent registry and version display.
+- [ ] Implement Evolution Lab, candidate diff and evaluation results.
+- [ ] Implement Governance policy decision view.
+- [ ] Implement Supervisor approval queue.
+- [ ] Implement audit timeline.
+- [ ] Use exact OpenAPI response shapes and mock fixtures until integration.
+- [ ] Use one API client; no direct Firestore/Vertex calls from browser.
+- [ ] Apply semantic Bright Lattice palette consistently.
+- [ ] Add loading, empty, error, denied and approval-required states.
+- [ ] Label synthetic data and simulated actions.
+- [ ] Run frontend tests and browser smoke test.
+- [ ] Verify identity switch triggers backend route re-fetch.
+- [ ] Rehearse three-minute demo with deployed backend.

@@ -1,0 +1,298 @@
+{
+  "product": "LARA \u2014 Lattice Agentic Runtime Accelerator",
+  "version": "2.0.0-gcp-only",
+  "files": [
+    {
+      "path": ".env.example",
+      "bytes": 401
+    },
+    {
+      "path": "Dockerfile",
+      "bytes": 571
+    },
+    {
+      "path": "README.md",
+      "bytes": 3765
+    },
+    {
+      "path": "checklists/PERSON_1_ASHWATH.md",
+      "bytes": 1329
+    },
+    {
+      "path": "checklists/PERSON_2_PRANEETH.md",
+      "bytes": 1252
+    },
+    {
+      "path": "checklists/RELEASE_AND_DEMO.md",
+      "bytes": 914
+    },
+    {
+      "path": "cloudbuild.yaml",
+      "bytes": 1325
+    },
+    {
+      "path": "contracts/openapi.yaml",
+      "bytes": 6460
+    },
+    {
+      "path": "data/fixtures/evolution_cases.json",
+      "bytes": 1004
+    },
+    {
+      "path": "data/fixtures/route_cases.json",
+      "bytes": 1388
+    },
+    {
+      "path": "data/sops/SOP-MNT-014-current.md",
+      "bytes": 1696
+    },
+    {
+      "path": "data/sops/SOP-MNT-014-obsolete.md",
+      "bytes": 597
+    },
+    {
+      "path": "data/synthetic/assets.json",
+      "bytes": 733
+    },
+    {
+      "path": "data/synthetic/evolution_failure.json",
+      "bytes": 888
+    },
+    {
+      "path": "data/synthetic/graph_edges.json",
+      "bytes": 6002
+    },
+    {
+      "path": "data/synthetic/graph_nodes.json",
+      "bytes": 5410
+    },
+    {
+      "path": "data/synthetic/incidents.json",
+      "bytes": 783
+    },
+    {
+      "path": "data/synthetic/maintenance_history.json",
+      "bytes": 564
+    },
+    {
+      "path": "data/synthetic/users.json",
+      "bytes": 1457
+    },
+    {
+      "path": "data/synthetic/vendor_contracts.json",
+      "bytes": 480
+    },
+    {
+      "path": "design/bright-lattice-kit/PREVIEW.html",
+      "bytes": 2780
+    },
+    {
+      "path": "design/bright-lattice-kit/README.md",
+      "bytes": 5496
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/brand/lara-hero-art.svg",
+      "bytes": 2529
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/brand/lara-mark.svg",
+      "bytes": 810
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/brand/lara-palette.svg",
+      "bytes": 2230
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/brand/lara-wordmark.svg",
+      "bytes": 1089
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/agent.svg",
+      "bytes": 340
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/approval.svg",
+      "bytes": 309
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/audit.svg",
+      "bytes": 335
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/evolution.svg",
+      "bytes": 307
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/graph.svg",
+      "bytes": 411
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/memory.svg",
+      "bytes": 327
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/model.svg",
+      "bytes": 336
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/policy.svg",
+      "bytes": 329
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/sandbox.svg",
+      "bytes": 331
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/icons/tool.svg",
+      "bytes": 287
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/agent-delegation.svg",
+      "bytes": 2657
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/agent-evolution.svg",
+      "bytes": 3639
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/end-to-end-workflow.svg",
+      "bytes": 4611
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/identity-governance.svg",
+      "bytes": 3763
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/information-highways.svg",
+      "bytes": 4570
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/institutional-memory.svg",
+      "bytes": 2943
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/knowledge-fabric.svg",
+      "bytes": 2982
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/runtime-architecture.svg",
+      "bytes": 2583
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/illustrations/task-scoped-environment.svg",
+      "bytes": 3222
+    },
+    {
+      "path": "design/bright-lattice-kit/assets/patterns/lattice-grid.svg",
+      "bytes": 568
+    },
+    {
+      "path": "design/bright-lattice-kit/docs/DESIGN_LANGUAGE.md",
+      "bytes": 4271
+    },
+    {
+      "path": "design/bright-lattice-kit/docs/WORKFLOWS.md",
+      "bytes": 8177
+    },
+    {
+      "path": "design/bright-lattice-kit/references/provided-visual-reference.png",
+      "bytes": 188278
+    },
+    {
+      "path": "design/bright-lattice-kit/styles/lara-theme.css",
+      "bytes": 2393
+    },
+    {
+      "path": "design/bright-lattice-kit/tokens/lara-design-tokens.json",
+      "bytes": 2080
+    },
+    {
+      "path": "docs/00_EXECUTIVE_SUMMARY.md",
+      "bytes": 5037
+    },
+    {
+      "path": "docs/01_LOCKED_SCOPE_AND_NON_NEGOTIABLES.md",
+      "bytes": 5990
+    },
+    {
+      "path": "docs/02_GCP_TARGET_ARCHITECTURE.md",
+      "bytes": 8580
+    },
+    {
+      "path": "docs/03_BACKEND_WORKFLOW_SPEC.md",
+      "bytes": 8751
+    },
+    {
+      "path": "docs/04_INFORMATION_HIGHWAYS_SPEC.md",
+      "bytes": 6538
+    },
+    {
+      "path": "docs/05_EVOLUTION_ENGINE_SPEC.md",
+      "bytes": 4865
+    },
+    {
+      "path": "docs/06_IDENTITY_RBAC_ABAC_SPEC.md",
+      "bytes": 5097
+    },
+    {
+      "path": "docs/07_SYNTHETIC_DATA_AND_SOP_SPEC.md",
+      "bytes": 4720
+    },
+    {
+      "path": "docs/08_UX_FLOW_AND_SCREEN_SPEC.md",
+      "bytes": 8197
+    },
+    {
+      "path": "docs/09_API_CONTRACT.md",
+      "bytes": 5652
+    },
+    {
+      "path": "docs/10_TWO_PERSON_12_HOUR_PLAN.md",
+      "bytes": 7560
+    },
+    {
+      "path": "docs/11_GCP_DEPLOYMENT_RUNBOOK.md",
+      "bytes": 5892
+    },
+    {
+      "path": "docs/12_ACCEPTANCE_CHECKLIST.md",
+      "bytes": 5044
+    },
+    {
+      "path": "docs/13_ANTIGRAVITY_EXECUTION_RULES.md",
+      "bytes": 4199
+    },
+    {
+      "path": "docs/14_BUILD_ORDER_AND_CUTLINE.md",
+      "bytes": 1666
+    },
+    {
+      "path": "prompts/analysis_agent_v1.md",
+      "bytes": 760
+    },
+    {
+      "path": "prompts/evolution_diagnostician.md",
+      "bytes": 661
+    },
+    {
+      "path": "prompts/research_agent_v1.md",
+      "bytes": 1029
+    },
+    {
+      "path": "prompts/verification_agent_v1.md",
+      "bytes": 743
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 193
+    },
+    {
+      "path": "scripts/deploy.sh",
+      "bytes": 357
+    },
+    {
+      "path": "scripts/seed_demo.py",
+      "bytes": 1844
+    }
+  ]
+}

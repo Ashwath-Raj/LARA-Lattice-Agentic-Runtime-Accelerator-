@@ -1,0 +1,27 @@
+{
+  "synthetic": true,
+  "tenant_id": "demo-enterprise",
+  "records": [
+    {
+      "asset_id": "P-204",
+      "asset_type": "process_pump",
+      "site": "Northstar Process Works",
+      "department": "operations",
+      "status": "IN_SERVICE",
+      "operating_envelope": {
+        "vibration_rms": {
+          "unit": "mm/s",
+          "review_threshold": 7.0,
+          "note": "Synthetic demo threshold; not an engineering standard."
+        },
+        "bearing_temperature": {
+          "unit": "degC",
+          "review_threshold": 80.0,
+          "note": "Synthetic demo threshold; not an engineering standard."
+        }
+      },
+      "classification": "INTERNAL",
+      "last_verified": "2026-11-18T10:00:00Z"
+    }
+  ]
+}

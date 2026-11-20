@@ -1,0 +1,26 @@
+# Person 1 — Ashwath: Backend + Google Cloud Checklist
+
+- [ ] Inspect repository; preserve existing working code.
+- [ ] Confirm Google Cloud project ID and billing.
+- [ ] Confirm Vertex AI model and location availability.
+- [ ] Enable Cloud Run, Vertex AI, Firestore, Storage, Cloud Build, Artifact Registry, IAM, Logging APIs.
+- [ ] Create Firestore Native database.
+- [ ] Create private GCS bucket.
+- [ ] Create dedicated Cloud Run runtime service account.
+- [ ] Grant least-privilege IAM roles.
+- [ ] Create Artifact Registry repository.
+- [ ] Freeze OpenAPI contract and example payloads by H+0:30.
+- [ ] Implement FastAPI health and auth endpoints.
+- [ ] Implement Firestore repositories.
+- [ ] Seed synthetic graph nodes/edges and data.
+- [ ] Implement RBAC + ABAC and fail-closed tests.
+- [ ] Implement route resolver and Operator/Supervisor comparison.
+- [ ] Implement Vertex AI adapter using ADC.
+- [ ] Implement orchestrator and three agent contracts.
+- [ ] Implement evolution candidate/evaluation/approval/promotion/rollback.
+- [ ] Implement tool gateway and simulated action.
+- [ ] Persist audit trace.
+- [ ] Run backend/integration/security tests.
+- [ ] Build via Cloud Build and deploy Cloud Run.
+- [ ] Verify model, Firestore, GCS and trace on deployed URL.
+- [ ] Freeze release and record commit/revision URL.
