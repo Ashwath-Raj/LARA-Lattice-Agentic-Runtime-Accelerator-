@@ -1,0 +1,15 @@
+{
+  "package": "LARA Frontend UI Components",
+  "version": "1.0.0",
+  "designReference": ["Google Ads console information hierarchy", "Google Workspace security page split-layout inspiration"],
+  "screens": ["Overview", "Investigations", "Information Highways", "Agent Fleet", "Evolution Lab", "Approvals", "Policies & Principals", "Audit Trail"],
+  "sharedComponentFile": "src/components/ui/index.tsx",
+  "applicationShell": "src/components/layout/AppShell.tsx",
+  "featureScreens": "src/features/Pages.tsx",
+  "assets": {
+    "logos": ["lara-mark.svg", "lara-wordmark.svg", "lara-wordmark-mono.svg", "lara-app-icon.svg", "public/favicon.svg"],
+    "illustrations": ["route-flow.svg", "evidence-file.svg", "approval-path.svg"]
+  },
+  "dataMode": "Synthetic local demo fixtures; no production API calls",
+  "buildCommands": ["npm install", "npm run typecheck", "npm run build"]
+}

@@ -1,0 +1,992 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import routeFlow from '../assets/illustrations/route-flow.svg';
+import {
+  Activity, ArrowRight, Check, CheckCircle2,
+  CircleAlert, Download, Filter, GitBranch,
+  LockKeyhole, MoreHorizontal, Network, Plus, RefreshCw, ShieldAlert,
+  ShieldCheck, Workflow
+} from 'lucide-react';
+import { investigations, evidence, approvals as demoApprovals, auditEvents as demoAuditEvents, principals as demoPrincipals } from '../data/demo';
+import { PageId } from '../components/layout/AppShell';
+import {
+  Avatar, Badge, Button, DataTable, EmptyState, FilterChip, InlineAlert, JsonViewer,
+  MetricCard, Modal, PageHeader, Panel, ProgressBar, SearchField, SelectField,
+  StatusBadge, Tabs, TextField, Timeline
+} from '../components/ui';
+import { useAuth } from '../features/auth/AuthContext';
+import { api } from '../api/client';
+import { RouteResult } from '../api/types';
+
+function ChartPanel() {
+  const lines = [
+    '0,82 38,70 76,77 114,51 152,63 190,44 228,60 266,38 304,46 342,22 380,38 418,18 456,30 494,11 532,23 570,5 608,19',
+    '0,94 38,85 76,90 114,67 152,80 190,61 228,84 266,58 304,71 342,50 380,67 418,42 456,59 494,35 532,49 570,31 608,43'
+  ];
+  return (
+    <div className="chart-shell">
+      <div className="chart-legend">
+        <span><i className="legend-blue" />Investigations</span>
+        <span><i className="legend-teal" />Evidence verified</span>
+        <span className="chart-period">Last 30 days</span>
+      </div>
+      <svg className="trend-chart" viewBox="0 0 620 128" preserveAspectRatio="none" role="img" aria-label="Investigation and evidence verification trend over the last 30 days">
+        <defs>
+          <linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0" stopColor="#1A73E8" stopOpacity=".14" />
+            <stop offset="1" stopColor="#1A73E8" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[28, 58, 88, 118].map(y => <line key={y} x1="0" y1={y} x2="620" y2={y} stroke="#E9EDF3" strokeDasharray="3 4" />)}
+        <polygon points={`0,128 ${lines[0]} 608,128`} fill="url(#chartFill)" />
+        <polyline points={lines[0]} transform="translate(0 8)" fill="none" stroke="#1A73E8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <polyline points={lines[1]} transform="translate(0 12)" fill="none" stroke="#0B9A9A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="chart-axis">
+        <span>Oct 22</span><span>Oct 29</span><span>Nov 05</span><span>Nov 12</span><span>Nov 20</span>
+      </div>
+    </div>
+  );
+}
+
+export function OverviewWelcomePanel({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="welcome-panel">
+      <div className="welcome-copy">
+        <div className="eyebrow">ENTERPRISE OPERATIONS RUNTIME</div>
+        <h2>Enterprise Incident Workbench</h2>
+        <p>Investigate incidents with linked evidence, specialist analysis and controlled operational handoffs — all in one workspace.</p>
+        <div className="welcome-actions">
+          <Button variant="primary" onClick={onStart}><Plus size={16} /> Start Investigation</Button>
+          <Button variant="subtle">Explore runtime <ArrowRight size={15} /></Button>
+        </div>
+        <div className="welcome-meta">
+          <span><CheckCircle2 size={14} /> Policy engine active</span>
+          <span><CheckCircle2 size={14} /> 4 sources connected</span>
+        </div>
+      </div>
+      <div className="welcome-visual">
+        <img src={routeFlow} alt="Diagram showing information sources routed through LARA to specialist agents and tools" />
+      </div>
+    </div>
+  );
+}
+
+export function SystemHealthStrip() {
+  const systems = [
+    ['Runtime API', 'Operational', 'green'],
+    ['Knowledge sources', '4 connected', 'blue'],
+    ['Model provider', 'Gemini adapter', 'blue'],
+    ['Policy engine', 'Enforcing', 'green']
+  ];
+  return (
+    <div className="system-health-strip">
+      {systems.map(([label, value, tone]) => (
+        <div className="system-health-item" key={label}>
+          <span className={`health-indicator ${tone}`} />
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function NewInvestigationDialog({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (title: string, asset: string) => void }) {
+  const [title, setTitle] = useState('');
+  const [asset, setAsset] = useState('Compressor P-204');
+  const [scope, setScope] = useState('Investigate the recent vibration anomaly and reconcile maintenance records.');
+  return (
+    <Modal
+      open={open}
+      title="Start an investigation"
+      description="Create an operational case for evidence collection and specialist analysis."
+      onClose={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={!title.trim()} onClick={() => { onCreate(title, asset); setTitle(''); onClose(); }}>
+            Create investigation <ArrowRight size={15} />
+          </Button>
+        </>
+      }
+    >
+      <div className="form-grid">
+        <TextField label="Investigation title" value={title} onChange={setTitle} placeholder="e.g. P-204 vibration anomaly" />
+        <SelectField label="Asset / system" value={asset} onChange={setAsset} options={['Compressor P-204', 'Cooling loop CL-08', 'Turbine T-12', 'Conveyor CV-31', 'Boiler B-03']} />
+        <label className="field field-full">
+          <span className="field-label">Investigation scope</span>
+          <textarea value={scope} onChange={e => setScope(e.target.value)} rows={4} />
+          <small>Scope guides retrieval and analysis; policy boundaries remain enforced.</small>
+        </label>
+      </div>
+    </Modal>
+  );
+}
+
+export function KpiSummaryRow() {
+  return (
+    <div className="metric-grid">
+      <MetricCard label="Open investigations" value="12" change="3 require attention" icon={<Activity size={17} />} tone="blue" />
+      <MetricCard label="Pending approvals" value="03" change="Oldest request · 42 min" icon={<ShieldCheck size={17} />} tone="amber" />
+      <MetricCard label="Active agents" value="04 / 04" change="All within expected range" icon={<Workflow size={17} />} tone="green" />
+      <MetricCard label="Evidence gaps" value="07" change="2 critical · 5 standard" icon={<CircleAlert size={17} />} tone="purple" />
+    </div>
+  );
+}
+
+export function RecentInvestigationsTable({ onSelect, onViewAll }: { onSelect: (id: string) => void; onViewAll: () => void }) {
+  const rows = investigations.slice(0, 4);
+  return (
+    <Panel title="Recent investigations" subtitle="Latest operational cases across North Plant" action={<Button size="sm" onClick={onViewAll}>View all <ArrowRight size={14} /></Button>}>
+      <DataTable
+        rows={rows}
+        rowKey="id"
+        columns={[
+          { key: 'id', label: 'Case ID', render: r => <span className="mono link-text">{r.id}</span> },
+          { key: 'asset', label: 'Asset', render: r => <div className="table-primary"><strong>{r.asset}</strong><small>{r.site}</small></div> },
+          { key: 'severity', label: 'Severity', render: r => <StatusBadge status={r.severity} /> },
+          { key: 'owner', label: 'Owner', render: r => <span className="owner-cell"><Avatar name={r.owner} size="sm" />{r.owner}</span> },
+          { key: 'status', label: 'Status', render: r => <StatusBadge status={r.status} /> },
+          { key: 'updated', label: 'Updated' }
+        ]}
+        onRowClick={r => onSelect(r.id)}
+      />
+    </Panel>
+  );
+}
+
+export function AttentionQueue({ onOpenApprovals }: { onOpenApprovals: () => void }) {
+  return (
+    <Panel title="Needs your attention" subtitle="Actions waiting for a decision" action={<Badge tone="amber">3 open</Badge>}>
+      <div className="attention-list">
+        <div className="attention-item">
+          <div className="attention-icon amber"><ShieldAlert size={17} /></div>
+          <div><strong>Maintenance dispatch approval</strong><p>INC-204 · Compressor P-204</p><small>Requested 8 minutes ago</small></div>
+        </div>
+        <div className="attention-item">
+          <div className="attention-icon blue"><CircleAlert size={17} /></div>
+          <div><strong>Resolve evidence discrepancy</strong><p>INC-198 · Vendor report revision</p><small>1 source needs review</small></div>
+        </div>
+        <div className="attention-item">
+          <div className="attention-icon purple"><GitBranch size={17} /></div>
+          <div><strong>Review candidate v1.0.1</strong><p>Verification Agent · Evolution</p><small>4 evaluation checks passed</small></div>
+        </div>
+      </div>
+      <Button size="sm" variant="secondary" className="full-button" onClick={onOpenApprovals}>Open approval queue <ArrowRight size={14} /></Button>
+    </Panel>
+  );
+}
+
+export function OverviewPage({ onNavigate, onStart, onSelectInvestigation }: { onNavigate: (p: PageId) => void; onStart: () => void; onSelectInvestigation: (id: string) => void }) {
+  return (
+    <>
+      <PageHeader
+        eyebrow="NORTH PLANT / OPERATIONS"
+        title="Overview"
+        subtitle="Enterprise Incident Workbench · A live workspace for incident investigation and operational decisions."
+        actions={<Button variant="primary" onClick={onStart}><Plus size={16} /> New Investigation</Button>}
+      />
+      <OverviewWelcomePanel onStart={onStart} />
+      <SystemHealthStrip />
+      <KpiSummaryRow />
+      <div className="overview-grid">
+        <div className="overview-main">
+          <Panel title="Operational activity" subtitle="Investigation volume and evidence verification"><ChartPanel /></Panel>
+          <RecentInvestigationsTable onSelect={onSelectInvestigation} onViewAll={() => onNavigate('investigations')} />
+        </div>
+        <div className="overview-side">
+          <AttentionQueue onOpenApprovals={() => onNavigate('approvals')} />
+          <Panel title="Recent activity" subtitle="Latest runtime events">
+            <Timeline
+              items={[
+                { time: '10:42 AM', title: 'Approval requested', detail: 'Maintenance dispatch for Compressor P-204', status: 'Awaiting approval' },
+                { time: '10:41 AM', title: 'Claim verification complete', detail: '3 claims verified · 1 discrepancy flagged', status: 'Needs review' },
+                { time: '10:40 AM', title: 'Information route resolved', detail: '4 permitted sources selected', status: 'Active' },
+                { time: '09:58 AM', title: 'Supervisor approved action', detail: 'Inspection request for asset T-12', status: 'Approved' }
+              ]}
+            />
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function InvestigationListPage({ onSelect, onStart }: { onSelect: (id: string) => void; onStart: () => void }) {
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('All statuses');
+  const [severity, setSeverity] = useState('All severity');
+  const filtered = useMemo(() => investigations.filter(r => (`${r.id} ${r.asset} ${r.owner}`.toLowerCase().includes(query.toLowerCase())) && (status === 'All statuses' || r.status === status) && (severity === 'All severity' || r.severity === severity)), [query, status, severity]);
+  return (
+    <>
+      <PageHeader eyebrow="WORKBENCH" title="Investigations" subtitle="Track operational cases, reconcile evidence and review proposed actions." actions={<Button variant="primary" onClick={onStart}><Plus size={15} /> New investigation</Button>} />
+      <div className="toolbar-row">
+        <SearchField value={query} onChange={setQuery} placeholder="Search by case, asset or owner" />
+        <SelectField value={status} onChange={setStatus} options={['All statuses', 'Investigating', 'Awaiting approval', 'In review', 'Resolved', 'Blocked']} />
+        <SelectField value={severity} onChange={setSeverity} options={['All severity', 'Critical', 'High', 'Medium', 'Low']} />
+        <Button><Filter size={15} /> More filters</Button>
+      </div>
+      <Panel title="All investigations" subtitle={`${filtered.length} cases in this workspace`}>
+        <DataTable
+          rows={filtered}
+          rowKey="id"
+          columns={[
+            { key: 'id', label: 'Case ID', render: r => <span className="mono link-text">{r.id}</span> },
+            { key: 'asset', label: 'Asset', render: r => <div className="table-primary"><strong>{r.asset}</strong><small>{r.site}</small></div> },
+            { key: 'severity', label: 'Severity', render: r => <StatusBadge status={r.severity} /> },
+            { key: 'owner', label: 'Owner', render: r => <span className="owner-cell"><Avatar name={r.owner} size="sm" />{r.owner}</span> },
+            { key: 'status', label: 'Status', render: r => <StatusBadge status={r.status} /> },
+            { key: 'updated', label: 'Last updated' }
+          ]}
+          onRowClick={r => onSelect(r.id)}
+        />
+      </Panel>
+    </>
+  );
+}
+
+export function InvestigationStageBar({ active = 3 }: { active?: number }) {
+  const stages = ['Intake', 'Route resolution', 'Evidence', 'Analysis', 'Verification', 'Policy review', 'Proposed action'];
+  return (
+    <div className="stage-bar">
+      {stages.map((s, i) => (
+        <div key={s} className={`stage ${i < active ? 'done' : ''} ${i === active ? 'current' : ''}`}>
+          <span>{i < active ? <Check size={12} /> : i + 1}</span>
+          <small>{s}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function IncidentSummaryPanel() {
+  return (
+    <Panel title="Incident summary" subtitle="Core context and ownership">
+      <div className="summary-pairs">
+        <div><small>Asset</small><strong>Compressor P-204</strong></div>
+        <div><small>Site</small><strong>Plant North · Line 2</strong></div>
+        <div><small>Reported</small><strong>20 Nov 2026 · 09:39</strong></div>
+        <div><small>Owner</small><strong>Maya Chen</strong></div>
+        <div><small>Severity</small><StatusBadge status="Critical" /></div>
+        <div><small>Current state</small><StatusBadge status="Awaiting approval" /></div>
+      </div>
+    </Panel>
+  );
+}
+
+export function EvidenceLedger() {
+  return (
+    <Panel title="Evidence ledger" subtitle="Linked source records with revision and freshness context" action={<Button size="sm"><Download size={14} /> Export</Button>}>
+      <DataTable
+        rows={evidence}
+        rowKey="id"
+        columns={[
+          { key: 'source', label: 'Source', render: r => <strong>{r.source}</strong> },
+          { key: 'id', label: 'Record ID', render: r => <span className="mono link-text">{r.id}</span> },
+          { key: 'timestamp', label: 'Timestamp' },
+          { key: 'revision', label: 'Revision' },
+          { key: 'freshness', label: 'Freshness', render: r => <StatusBadge status={r.freshness} /> },
+          { key: 'verification', label: 'Verification', render: r => <StatusBadge status={r.verification} /> }
+        ]}
+      />
+    </Panel>
+  );
+}
+
+export function EvidenceGapPanel() {
+  return (
+    <Panel title="Evidence gaps" subtitle="Records that need follow-up">
+      <div className="gap-row">
+        <span className="gap-marker amber" />
+        <div><strong>Vendor inspection report may be stale</strong><p>VIR-2207 · Latest revision not confirmed</p></div>
+        <Badge tone="amber">Review</Badge>
+      </div>
+      <div className="gap-row">
+        <span className="gap-marker red" />
+        <div><strong>Post-maintenance vibration sample missing</strong><p>Expected after WO-7842 closeout</p></div>
+        <Badge tone="red">Missing</Badge>
+      </div>
+    </Panel>
+  );
+}
+
+export function ClaimVerificationTable() {
+  const rows = [
+    { claim: 'Bearing wear is above operating threshold', result: 'Supported', source: 'TEL-P204-0918' },
+    { claim: 'SOP revision 3.2 governs this asset', result: 'Supported', source: 'SOP-MNT-014' },
+    { claim: 'Vendor inspection confirms prior repair', result: 'Discrepancy', source: 'VIR-2207' }
+  ];
+  return (
+    <Panel title="Claim verification" subtitle="Each conclusion is tied to source records">
+      <DataTable
+        rows={rows}
+        rowKey="claim"
+        columns={[
+          { key: 'claim', label: 'Claim', render: r => <strong>{r.claim}</strong> },
+          { key: 'result', label: 'Result', render: r => <StatusBadge status={r.result} /> },
+          { key: 'source', label: 'Source reference', render: r => <span className="mono">{r.source}</span> }
+        ]}
+      />
+    </Panel>
+  );
+}
+
+export function ProposedActionPanel({ onApprove }: { onApprove: () => void }) {
+  return (
+    <Panel title="Proposed action" subtitle="Policy evaluation and controlled operational handoff">
+      <div className="proposed-action">
+        <div className="proposed-icon"><Activity size={20} /></div>
+        <div><strong>Dispatch maintenance team to P-204</strong><p>Perform bearing inspection and controlled shutdown procedure.</p></div>
+        <StatusBadge status="Require approval" />
+      </div>
+      <div className="action-meta">
+        <span>Policy decision</span><strong className="text-amber">REQUIRE_APPROVAL</strong>
+        <span>Required authority</span><strong>Maintenance Supervisor</strong>
+        <span>Separation of duties</span><strong><CheckCircle2 size={14} /> Requester cannot self-approve</strong>
+      </div>
+      <InlineAlert tone="warning" title="Supervisor review required">
+        This action changes operational state. Approval is required before any dispatch connector is invoked.
+      </InlineAlert>
+      <Button variant="primary" onClick={onApprove}>Review approval request <ArrowRight size={15} /></Button>
+    </Panel>
+  );
+}
+
+export function InvestigationWorkspace({ id, onBack, onApprove }: { id: string; onBack: () => void; onApprove: () => void }) {
+  return (
+    <>
+      <div className="back-link">
+        <button onClick={onBack}>‹ All investigations</button>
+        <span>/</span>
+        <span>{id}</span>
+      </div>
+      <PageHeader
+        eyebrow="INVESTIGATION WORKSPACE"
+        title={`${id} · Compressor P-204`}
+        subtitle="Vibration anomaly · Plant North / Line 2"
+        actions={
+          <>
+            <Button><MoreHorizontal size={16} /> Actions</Button>
+            <Button variant="primary" onClick={onApprove}>Review proposed action</Button>
+          </>
+        }
+      />
+      <InvestigationStageBar />
+      <div className="detail-grid">
+        <div className="detail-main">
+          <IncidentSummaryPanel />
+          <EvidenceLedger />
+          <ClaimVerificationTable />
+          <Panel title="Correlated event timeline" subtitle="Events reconciled across operational sources">
+            <Timeline
+              items={[
+                { time: '09:18:02', title: 'Vibration threshold exceeded', detail: 'Telemetry stream TEL-P204-0918 reported 8.7 mm/s RMS', status: 'Critical' },
+                { time: '09:24:30', title: 'Work order history retrieved', detail: 'WO-7842 linked to prior bearing inspection', status: 'Verified' },
+                { time: '09:38:12', title: 'Incident submitted', detail: 'Operator reported abnormal vibration and elevated temperature', status: 'Active' },
+                { time: '10:41:56', title: 'Claim verification completed', detail: 'Three claims supported; one vendor record discrepancy remains', status: 'Needs review' }
+              ]}
+            />
+          </Panel>
+        </div>
+        <div className="detail-side">
+          <EvidenceGapPanel />
+          <Panel title="Agent work" subtitle="Specialist tasks for this investigation">
+            <div className="agent-task">
+              <Avatar name="Research Agent" />
+              <div><strong>Research Agent</strong><small>Retrieved 4 source records</small></div>
+              <StatusBadge status="Complete" />
+            </div>
+            <div className="agent-task">
+              <Avatar name="Analysis Agent" />
+              <div><strong>Analysis Agent</strong><small>Compared telemetry and maintenance</small></div>
+              <StatusBadge status="Complete" />
+            </div>
+            <div className="agent-task">
+              <Avatar name="Verification Agent" />
+              <div><strong>Verification Agent</strong><small>Flagged 1 source discrepancy</small></div>
+              <StatusBadge status="Needs review" />
+            </div>
+          </Panel>
+          <ProposedActionPanel onApprove={onApprove} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function HighwaysPage() {
+  const { principal } = useAuth();
+  const [view, setView] = useState('Graph');
+  const [selected, setSelected] = useState('Vibration telemetry');
+  const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.resolveRoute('task_demo_inc204').then((res) => {
+      if (isMounted) setRouteResult(res);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, [principal]);
+
+  const nodes = [
+    { x: 70, y: 80, label: 'Telemetry stream', kind: 'Source', sub: 'TEL-P204-0918' },
+    { x: 70, y: 230, label: 'Maintenance SOP', kind: 'Source', sub: 'SOP-MNT-014' },
+    { x: 285, y: 151, label: 'Incident workflow', kind: 'Workflow', sub: 'INC-204 investigation' },
+    { x: 510, y: 80, label: 'Research Agent', kind: 'Agent', sub: 'Evidence retrieval' },
+    { x: 510, y: 230, label: 'Verification Agent', kind: 'Agent', sub: 'Claim validation' },
+    { x: 735, y: 151, label: 'Maintenance connector', kind: 'Tool', sub: 'Action: approval gated' }
+  ];
+
+  const principalDisplay = principal?.display_name || 'Maya Operator';
+  const roleDisplay = principal?.roles?.[0] ? (principal.roles[0].charAt(0).toUpperCase() + principal.roles[0].slice(1)) : 'Operator';
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="INTELLIGENCE / INFORMATION HIGHWAYS"
+        title="Dynamic Task Route Resolution"
+        subtitle="Inspect how information moves between permitted sources, workflows, agents and operational tools."
+        actions={<Button onClick={() => api.resolveRoute('task_demo_inc204').then(setRouteResult)}><RefreshCw size={15} /> Refresh routes</Button>}
+      />
+      <div className="route-principal-banner" style={{ padding: '12px 16px', background: '#EAF2FE', borderRadius: '8px', marginBottom: '16px', border: '1px solid #C2D7FF' }}>
+        <strong>Resolved route for principal: {principalDisplay} ({roleDisplay})</strong>
+      </div>
+      <div className="highway-summary">
+        <div><span>Resolved routes</span><strong>06</strong></div>
+        <div><span>Excluded candidates</span><strong className="text-amber">{routeResult?.excluded_candidates?.length || 2}</strong></div>
+        <div><span>Policy checks</span><strong className="text-green">08 / 08</strong></div>
+        <div><span>Avg. route resolution</span><strong>184 ms</strong></div>
+      </div>
+      <div className="toolbar-row">
+        <Tabs items={['Graph', 'Table']} value={view} onChange={setView} />
+        <div className="toolbar-spacer" />
+        <FilterChip active>All route states</FilterChip>
+        <FilterChip>{roleDisplay}</FilterChip>
+        <Button><Download size={14} /> Export view</Button>
+      </div>
+      <div className="highway-layout">
+        <Panel title="Resolved information route" subtitle="Permission-aware source-to-action path">
+          <div className="graph-canvas">
+            {view === 'Graph' ? (
+              <svg viewBox="0 0 840 330" role="img" aria-label="Information highway graph from sources through workflow to agents and tool">
+                <defs>
+                  <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0 0 L6 3 L0 6" fill="#7FA9E4" />
+                  </marker>
+                </defs>
+                <g stroke="#9CB9E4" strokeWidth="2.4" fill="none" markerEnd="url(#arrowhead)">
+                  <path d="M165 104 C220 104 218 154 254 154" />
+                  <path d="M165 254 C220 254 218 174 254 174" />
+                  <path d="M410 164 C460 164 460 104 493 104" />
+                  <path d="M410 164 C460 164 460 254 493 254" />
+                  <path d="M650 104 C700 104 700 164 710 164" />
+                  <path d="M650 254 C700 254 700 164 710 164" strokeDasharray="6 5" />
+                </g>
+                {nodes.map(n => (
+                  <g key={n.label} onClick={() => setSelected(n.label)} className="graph-node" style={{ cursor: 'pointer' }}>
+                    <rect x={n.x} y={n.y - 27} width="142" height="55" rx="9" fill={selected === n.label ? '#EAF2FE' : '#fff'} stroke={selected === n.label ? '#1A73E8' : '#CDD7E4'} strokeWidth={selected === n.label ? 2 : 1} />
+                    <circle cx={n.x + 14} cy={n.y - 9} r="4" fill={n.kind === 'Source' ? '#0B9A9A' : n.kind === 'Workflow' ? '#1A73E8' : n.kind === 'Agent' ? '#7B61C7' : '#188038'} />
+                    <text x={n.x + 25} y={n.y - 6} fontSize="10" fill="#758195">{n.kind.toUpperCase()}</text>
+                    <text x={n.x + 12} y={n.y + 10} fontSize="11" fill="#202124" fontWeight="600">{n.label}</text>
+                  </g>
+                ))}
+              </svg>
+            ) : (
+              <DataTable rows={nodes} rowKey="label" columns={[{ key: 'label', label: 'Node' }, { key: 'kind', label: 'Type' }, { key: 'sub', label: 'Reference' }]} />
+            )}
+          </div>
+          <div className="graph-legend">
+            <span><i className="legend-source" /> Source</span>
+            <span><i className="legend-workflow" /> Workflow</span>
+            <span><i className="legend-agent" /> Agent</span>
+            <span><i className="legend-tool" /> Tool</span>
+            <span className="legend-note">Select a node to inspect its route context.</span>
+          </div>
+        </Panel>
+        <div className="highway-inspector">
+          <Panel title="Route inspector" subtitle="Selected node context">
+            <div className="inspector-node">
+              <Network size={18} />
+              <div><strong>{selected}</strong><small>Active route member</small></div>
+            </div>
+            <div className="inspector-fields">
+              <div><span>Access decision</span><StatusBadge status="Allowed" /></div>
+              <div><span>Data freshness</span><StatusBadge status="Current" /></div>
+              <div><span>Relevance score</span><strong>0.94</strong></div>
+              <div><span>Source trust</span><strong>0.98</strong></div>
+              <div><span>Principal context</span><strong>{principalDisplay} · {roleDisplay}</strong></div>
+            </div>
+            <InlineAlert tone="success" title="Policy check passed">
+              The selected node is permitted for the active principal and investigation purpose.
+            </InlineAlert>
+          </Panel>
+          <Panel title="Excluded candidates" subtitle="Not included in this route">
+            <div className="excluded-list">
+              {routeResult?.excluded_candidates && routeResult.excluded_candidates.length > 0 ? (
+                routeResult.excluded_candidates.map((e, idx) => (
+                  <div className="excluded-row" key={e.node_id || e.display || `candidate-${idx}`}>
+                    <ShieldAlert size={16} />
+                    <div><strong>{e.display || e.node_id}</strong><small>{e.reason_code}</small></div>
+                  </div>
+                ))
+              ) : (
+                <div className="excluded-row">
+                  <CheckCircle2 size={16} />
+                  <div><strong>No sources excluded</strong><small>All evaluated candidates permitted for this role</small></div>
+                </div>
+              )}
+            </div>
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function AgentFleetPage() {
+  const [selected, setSelected] = useState('Research Agent');
+  const agentList = [
+    { name: 'Research Agent', scope: 'Evidence retrieval & source reconciliation', version: 'v1.4.2', state: 'Active', lastRun: '2m ago', runs: '1,420' },
+    { name: 'Analysis Agent', scope: 'Cross-telemetry comparison & discrepancy discovery', version: 'v1.2.0', state: 'Active', lastRun: '8m ago', runs: '984' },
+    { name: 'Verification Agent', scope: 'Claim validation & SOP compliance checks', version: 'v1.0.0', state: 'Active', lastRun: '15m ago', runs: '1,543' }
+  ];
+
+  return (
+    <>
+      <PageHeader eyebrow="INTELLIGENCE / SPECIALISTS" title="Specialist Agent Fleet" subtitle="Manage specialist capabilities, runtime status, versions and execution activity." actions={<Button><Plus size={15} /> Register agent</Button>} />
+      <div className="metric-grid compact">
+        <MetricCard label="Registered agents" value="03" tone="blue" />
+        <MetricCard label="Active now" value="03" tone="green" />
+        <MetricCard label="Total executions" value="3,947" tone="blue" />
+        <MetricCard label="Failed in 24h" value="00" tone="green" />
+      </div>
+      <div className="fleet-grid">
+        <Panel title="Agent registry" subtitle="Select an agent to inspect its configuration">
+          <DataTable
+            rows={agentList}
+            rowKey="name"
+            columns={[
+              { key: 'name', label: 'Agent', render: r => <div className="table-primary"><strong>{r.name}</strong><small>{r.scope}</small></div> },
+              { key: 'version', label: 'Version', render: r => <span className="mono">{r.version}</span> },
+              { key: 'state', label: 'State', render: r => <StatusBadge status={r.state} /> },
+              { key: 'lastRun', label: 'Last run' },
+              { key: 'runs', label: 'Runs' }
+            ]}
+            onRowClick={r => setSelected(r.name)}
+          />
+        </Panel>
+        <Panel title="Agent detail" subtitle="Capability and execution profile">
+          <div className="agent-detail-head">
+            <Avatar name={selected} size="lg" />
+            <div>
+              <h3>Agent: {selected}</h3>
+              <StatusBadge status="Active" />
+              <p>Version 1.4.2 · Immutable config revision</p>
+            </div>
+          </div>
+          <div className="detail-section">
+            <strong>Granted capabilities</strong>
+            <div className="capability-tags">
+              <Badge tone="blue">Read: telemetry</Badge>
+              <Badge tone="blue">Read: maintenance</Badge>
+              <Badge tone="teal">Link evidence</Badge>
+              <Badge tone="amber">No direct execution</Badge>
+            </div>
+          </div>
+          <div className="detail-section">
+            <strong>Execution reliability</strong>
+            <ProgressBar value={99} label="Successful runs · 30 days" />
+          </div>
+          <div className="detail-section">
+            <strong>Latest activity</strong>
+            <Timeline
+              items={[
+                { time: '10:41 AM', title: 'Completed evidence retrieval', detail: 'INC-204 · 4 records returned', status: 'Complete' },
+                { time: '09:58 AM', title: 'Completed maintenance lookup', detail: 'INC-189 · 3 records returned', status: 'Complete' }
+              ]}
+            />
+          </div>
+          <Button size="sm">View version history <ArrowRight size={14} /></Button>
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+export function CandidateComparison() {
+  return (
+    <div className="diff-grid">
+      <div className="diff-card">
+        <div className="diff-label">ACTIVE BASELINE <Badge>v1.0.0</Badge></div>
+        <h3>Verification Agent</h3>
+        <p>Checks claims against linked evidence records.</p>
+        <pre>{`verify(claim, sources)\n  return match(claim, sources)`}</pre>
+      </div>
+      <div className="diff-arrow"><ArrowRight size={20} /></div>
+      <div className="diff-card candidate">
+        <div className="diff-label">PROPOSED CANDIDATE <Badge tone="purple">v1.0.1-candidate.1</Badge></div>
+        <h3>Verification Agent</h3>
+        <p>Adds mandatory revision and effective-date checks.</p>
+        <pre>{`verify(claim, sources)\n  check_revision(sources)\n  check_effective_date(sources)\n  return match(claim, sources)`}</pre>
+      </div>
+    </div>
+  );
+}
+
+export function EvaluationSuiteRunner() {
+  const [evaluating, setEvaluating] = useState(false);
+  const [result, setResult] = useState<'PASSED' | 'PENDING' | 'FAILED' | 'EVALUATING' | 'NOT_RUN'>('PENDING');
+
+  const runSuite = async () => {
+    setEvaluating(true);
+    try {
+      const proposals = await api.getEvolutionProposals();
+      if (proposals.length > 0) {
+        const evalRes = await api.evaluateCandidate(proposals[0].proposal_id);
+        setResult(evalRes.evaluation_status);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setEvaluating(false);
+    }
+  };
+
+  const tests = [
+    ['Functional · revision matching', 'Passed'],
+    ['Functional · stale source rejection', 'Passed'],
+    ['Invariant · no policy mutation', 'Passed'],
+    ['Invariant · no boundary escalation', 'Passed'],
+    ['Invariant · approval required for dispatch', 'Passed'],
+    ['Invariant · trace provenance retained', result === 'PASSED' ? 'Passed' : 'Running']
+  ];
+
+  return (
+    <Panel title="Evaluation suite" subtitle="Candidate validation · 6 checks">
+      <div className="eval-summary">
+        <strong>{result === 'PASSED' ? '6 / 6' : '5 / 6'}</strong>
+        <span>Checks completed</span>
+        <Badge tone={result === 'PASSED' ? 'green' : 'amber'}>{result === 'PASSED' ? 'Passed' : 'Running'}</Badge>
+      </div>
+      {tests.map(([n, s]) => (
+        <div className="eval-row" key={n}>
+          <span>{n}</span>
+          <StatusBadge status={s} />
+        </div>
+      ))}
+      <ProgressBar value={result === 'PASSED' ? 100 : 83} />
+      <Button size="sm" onClick={runSuite} disabled={evaluating}>
+        <RefreshCw size={14} className={evaluating ? 'spin' : ''} /> {evaluating ? 'Running suite...' : 'Run suite again'}
+      </Button>
+    </Panel>
+  );
+}
+
+export function EvolutionLabPage() {
+  const [tab, setTab] = useState('Candidate');
+  return (
+    <>
+      <PageHeader
+        eyebrow="GOVERNANCE / CONTROLLED CHANGE"
+        title="Prompt & Skill Evolution Engine"
+        subtitle="Evolution Lab · Evaluate runtime improvements before promotion. Protected policies and security invariants remain immutable."
+        actions={<Button><GitBranch size={15} /> Version lineage</Button>}
+      />
+      <InlineAlert tone="info" title="Human-supervised promotion">
+        Candidate changes are isolated until evaluation passes and an authorized administrator approves promotion.
+      </InlineAlert>
+      <div className="toolbar-row">
+        <Tabs items={['Candidate', 'Failure signals', 'Version history']} value={tab} onChange={setTab} />
+      </div>
+      <div className="evolution-grid">
+        <div>
+          <Panel title="Candidate improvement" subtitle="FAIL-RESEARCH-001 · Missing SOP revision check">
+            <div className="failure-signal">
+              <div className="attention-icon amber"><CircleAlert size={18} /></div>
+              <div>
+                <strong>Observed Failure Signal</strong>
+                <p>Research Agent linked an obsolete procedure revision without checking its effective date.</p>
+                <small>Trace trc_8f14e45f · Linked incident INC-204</small>
+              </div>
+            </div>
+            <CandidateComparison />
+          </Panel>
+          <Panel title="Version lineage" subtitle="Immutable candidate ancestry">
+            <div className="lineage">
+              <div className="lineage-node">
+                <span className="lineage-dot promoted" />
+                <div><strong>v1.0.0</strong><small>Active baseline · Promoted 12 Nov</small></div>
+                <Badge tone="green">Active</Badge>
+              </div>
+              <div className="lineage-connector" />
+              <div className="lineage-node">
+                <span className="lineage-dot candidate" />
+                <div><strong>v1.0.1-candidate.1</strong><small>Parent: v1.0.0 · SHA-256: 9d12…c41a</small></div>
+                <Badge tone="purple">Candidate</Badge>
+              </div>
+            </div>
+          </Panel>
+        </div>
+        <div>
+          <EvaluationSuiteRunner />
+          <Panel title="Promotion gateway" subtitle="Administrator approval required">
+            <div className="approval-gateway">
+              <LockKeyhole size={22} />
+              <div>
+                <strong>Promotion locked pending final evaluation</strong>
+                <p>One invariant is still running. Promotion becomes available only after all checks pass.</p>
+              </div>
+            </div>
+            <TextField label="Approval justification" placeholder="Explain why this candidate is safe to promote" />
+            <Button variant="primary" disabled>Promote candidate</Button>
+            <Button variant="subtle">Reject candidate</Button>
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function PrincipalDirectory() {
+  return (
+    <Panel title="Principal directory" subtitle="Seeded demo identities and access contexts">
+      <DataTable
+        rows={demoPrincipals}
+        rowKey="email"
+        columns={[
+          { key: 'name', label: 'Principal', render: r => <div className="owner-cell"><Avatar name={r.name} /><div className="table-primary"><strong>{r.name}</strong><small>{r.email}</small></div></div> },
+          { key: 'role', label: 'Role', render: r => <Badge tone="blue">{r.role}</Badge> },
+          { key: 'dept', label: 'Department' },
+          { key: 'clearance', label: 'Clearance' },
+          { key: 'active', label: 'Session', render: r => <StatusBadge status={r.active ? 'Active' : 'Inactive'} /> }
+        ]}
+      />
+    </Panel>
+  );
+}
+
+export function PolicySimulator() {
+  const [action, setAction] = useState('dispatch_maintenance');
+  const [resource, setResource] = useState('asset:P-204');
+  const [purpose, setPurpose] = useState('incident_response');
+  const [evaluated, setEvaluated] = useState(false);
+  return (
+    <Panel title="Policy Decision Simulator" subtitle="Evaluate an action against the active principal and policy context">
+      <div className="form-grid">
+        <SelectField label="Action" value={action} onChange={v => { setAction(v); setEvaluated(false); }} options={['dispatch_maintenance', 'read_telemetry', 'read_vendor_contract', 'promote_agent_version']} />
+        <SelectField label="Resource" value={resource} onChange={v => { setResource(v); setEvaluated(false); }} options={['asset:P-204', 'source:telemetry', 'source:vendor-contract', 'agent:verification']} />
+        <SelectField label="Purpose" value={purpose} onChange={v => { setPurpose(v); setEvaluated(false); }} options={['incident_response', 'routine_maintenance', 'configuration_change', 'audit_review']} />
+        <div className="form-full">
+          <Button variant="primary" onClick={() => setEvaluated(true)}>Evaluate policy <ArrowRight size={14} /></Button>
+        </div>
+      </div>
+      {evaluated && (
+        <div className="policy-result">
+          <div className="policy-result-icon"><ShieldCheck size={20} /></div>
+          <div>
+            <strong>{action === 'dispatch_maintenance' ? 'REQUIRE_APPROVAL' : resource === 'source:vendor-contract' ? 'DENY' : 'ALLOW'}</strong>
+            <p>{action === 'dispatch_maintenance' ? 'Supervisor approval required for operational dispatch.' : resource === 'source:vendor-contract' ? 'Current Operator principal does not have vendor-contract clearance.' : 'The requested read is permitted for this principal and stated purpose.'}</p>
+            <small>Principal: Maya Chen · Policy set: north-plant-v4</small>
+          </div>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+export function GovernancePage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="GOVERNANCE / ACCESS CONTROL"
+        title="RBAC & ABAC Policy Authority"
+        subtitle="Governance · Inspect who can access which resources, and why a policy decision was reached."
+        actions={<Button><Plus size={15} /> Add policy rule</Button>}
+      />
+      <div className="metric-grid compact">
+        <MetricCard label="Active principals" value="04" tone="blue" />
+        <MetricCard label="Policy rules" value="28" tone="blue" />
+        <MetricCard label="Denied requests today" value="06" tone="amber" />
+        <MetricCard label="Policy engine" value="Enforcing" tone="green" />
+      </div>
+      <PrincipalDirectory />
+      <PolicySimulator />
+    </>
+  );
+}
+
+export function ApprovalQueueTable({ onSelect }: { onSelect: (id: string) => void }) {
+  return (
+    <Panel title="Approval queue" subtitle="High-impact actions awaiting an authorized decision">
+      <DataTable
+        rows={demoApprovals}
+        rowKey="id"
+        columns={[
+          { key: 'id', label: 'Request', render: r => <span className="mono link-text">{r.id}</span> },
+          { key: 'action', label: 'Proposed action', render: r => <div className="table-primary"><strong>{r.action}</strong><small>Requested by {r.requester}</small></div> },
+          { key: 'risk', label: 'Risk', render: r => <StatusBadge status={r.risk} /> },
+          { key: 'age', label: 'Age' },
+          { key: 'status', label: 'Status', render: r => <StatusBadge status={r.status} /> }
+        ]}
+        onRowClick={r => onSelect(r.id)}
+      />
+    </Panel>
+  );
+}
+
+export function ApprovalDecisionBar({ onDecision }: { onDecision: (v: string) => void }) {
+  const [reason, setReason] = useState('');
+  return (
+    <div className="decision-box">
+      <label className="field">
+        <span className="field-label">Decision justification · required</span>
+        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="Record the operational reason for this decision (minimum 8 characters)" />
+      </label>
+      <div className="decision-actions">
+        <Button variant="danger" disabled={reason.trim().length < 8} onClick={() => onDecision('Rejected')}>Reject request</Button>
+        <Button variant="primary" disabled={reason.trim().length < 8} onClick={() => onDecision('Approved')}><Check size={15} /> Approve request</Button>
+      </div>
+      <small>Self-approval is blocked by separation-of-duties policy.</small>
+    </div>
+  );
+}
+
+export function ApprovalQueuePage() {
+  const [selected, setSelected] = useState(demoApprovals[0].id);
+  const [decision, setDecision] = useState('');
+  const item = demoApprovals.find(a => a.id === selected) ?? demoApprovals[0];
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="GOVERNANCE / HUMAN REVIEW"
+        title="Human-in-the-Loop Gateway"
+        subtitle="Approvals · Review operational actions and controlled configuration changes before execution."
+      />
+      <div className="approval-layout">
+        <div>
+          <div className="approval-count">
+            <strong>03</strong>
+            <span>Requests requiring attention</span>
+            <Badge tone="amber">Pending</Badge>
+          </div>
+          <div className="approval-cards">
+            {demoApprovals.map(a => (
+              <button key={a.id} className={`approval-card ${selected === a.id ? 'selected' : ''}`} onClick={() => { setSelected(a.id); setDecision(''); }}>
+                <div className="approval-card-top">
+                  <span className="mono">{a.id}</span>
+                  <StatusBadge status={a.risk} />
+                </div>
+                <strong>{a.action}</strong>
+                <p>{a.requester} · {a.age} ago</p>
+              </button>
+            ))}
+          </div>
+        </div>
+        <Panel title="Request details" subtitle={item.id}>
+          <div className="request-summary">
+            <Badge tone="amber">{item.status}</Badge>
+            <h3>{item.action}</h3>
+            <p>{item.detail}</p>
+          </div>
+          <div className="summary-pairs">
+            <div><small>Requested by</small><strong>{item.requester}</strong></div>
+            <div><small>Risk level</small><StatusBadge status={item.risk} /></div>
+            <div><small>Request age</small><strong>{item.age}</strong></div>
+            <div><small>Policy decision</small><strong className="text-amber">REQUIRE_APPROVAL</strong></div>
+          </div>
+          <Panel title="Evidence references">
+            <div className="reference-row">WO-7842 · Maintenance work order <StatusBadge status="Verified" /></div>
+            <div className="reference-row">TEL-P204-0918 · Vibration telemetry <StatusBadge status="Verified" /></div>
+            <div className="reference-row">SOP-MNT-014 · Procedure revision 3.2 <StatusBadge status="Verified" /></div>
+          </Panel>
+          <InlineAlert tone="warning" title="Separation of duties enforced">
+            The requester cannot approve their own proposed action. The active demo principal is Ravi Kumar · Supervisor.
+          </InlineAlert>
+          <ApprovalDecisionBar onDecision={setDecision} />
+          {decision && (
+            <InlineAlert tone="success" title={`Request ${decision.toLowerCase()} (demo state)`}>
+              The decision has been recorded in this local UI demonstration. No external operation was executed.
+            </InlineAlert>
+          )}
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+export function AuditEventTable() {
+  const [query, setQuery] = useState('');
+  const rows = demoAuditEvents.filter(e => `${e.type} ${e.actor} ${e.target} ${e.trace}`.toLowerCase().includes(query.toLowerCase()));
+  return (
+    <>
+      <div className="toolbar-row">
+        <SearchField value={query} onChange={setQuery} placeholder="Search event, actor, target or trace" />
+        <FilterChip>All event types</FilterChip>
+        <FilterChip>All outcomes</FilterChip>
+        <Button><Download size={14} /> Export</Button>
+      </div>
+      <Panel title="Event log" subtitle={`${rows.length} events · Sample audit stream`}>
+        <DataTable
+          rows={rows}
+          rowKey="time"
+          columns={[
+            { key: 'time', label: 'Time', render: r => <span className="mono">{r.time}</span> },
+            { key: 'type', label: 'Event type', render: r => <strong className="event-type">{r.type}</strong> },
+            { key: 'actor', label: 'Actor' },
+            { key: 'target', label: 'Target', render: r => <span className="mono">{r.target}</span> },
+            { key: 'outcome', label: 'Outcome', render: r => <StatusBadge status={r.outcome} /> },
+            { key: 'trace', label: 'Trace ID', render: r => <span className="mono link-text">{r.trace}</span> }
+          ]}
+        />
+      </Panel>
+    </>
+  );
+}
+
+export function AuditTrailPage() {
+  const [trace, setTrace] = useState(false);
+  return (
+    <>
+      <PageHeader
+        eyebrow="OBSERVABILITY / TRACEABILITY"
+        title="Cryptographic Audit & Provenance"
+        subtitle="Follow actions and decisions across the runtime with linked trace identifiers and cryptographic hashes."
+        actions={<Button><Download size={15} /> Export events</Button>}
+      />
+      <div className="metric-grid compact">
+        <MetricCard label="Events today" value="1,284" tone="blue" />
+        <MetricCard label="Policy decisions" value="312" tone="blue" />
+        <MetricCard label="Denied / blocked" value="06" tone="amber" />
+        <MetricCard label="Trace coverage" value="100%" tone="green" />
+      </div>
+      <div className="audit-layout">
+        <div><AuditEventTable /></div>
+        <div>
+          <Panel title="Trace explorer" subtitle="Linked events for a single request">
+            <div className="trace-search">
+              <span className="mono">trc_8f14e45f</span>
+              <Button size="sm" onClick={() => setTrace(v => !v)}>{trace ? 'Hide' : 'Inspect'}</Button>
+            </div>
+            {trace ? (
+              <Timeline
+                items={[
+                  { time: '09:39:05', title: 'TASK_CREATED', detail: 'maya.chen created INC-204', status: 'Success' },
+                  { time: '09:40:47', title: 'ROUTE_RESOLVED', detail: '4 permitted sources selected', status: 'Success' },
+                  { time: '09:41:22', title: 'EVIDENCE_LINKED', detail: 'SOP-MNT-014 linked with revision metadata', status: 'Success' },
+                  { time: '09:41:56', title: 'CLAIM_VERIFIED', detail: 'One discrepancy identified', status: 'Partial' },
+                  { time: '09:42:18', title: 'POLICY_DECISION', detail: 'Dispatch action requires supervisor approval', status: 'Require approval' }
+                ]}
+              />
+            ) : (
+              <EmptyState title="Select a trace" description="Inspect a trace to see its sequence of linked runtime events." />
+            )}
+          </Panel>
+          <Panel title="Selected event payload" subtitle="Safe, read-only event metadata">
+            <JsonViewer value={{ event_id: 'evt_01JCVP4M', type: 'POLICY_DECISION', actor: 'policy-engine', target: 'APR-031', decision: 'REQUIRE_APPROVAL', reason_codes: ['HIGH_IMPACT_ACTION', 'SUPERVISOR_REQUIRED'], trace_id: 'trc_8f14e45f' }} />
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}
