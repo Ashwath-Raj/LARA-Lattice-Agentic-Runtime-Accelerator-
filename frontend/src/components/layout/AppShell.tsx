@@ -163,7 +163,13 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
               )}
             </div>
             <div className="header-pop-wrap">
-              <button className="identity-button" aria-label="Switch demo principal" onClick={() => setUserMenu(v => !v)}>
+              <button
+                className="identity-button"
+                aria-label={`Switch demo principal: ${activeName} (${activeRole})`}
+                aria-haspopup="menu"
+                aria-expanded={userMenu}
+                onClick={() => setUserMenu(v => !v)}
+              >
                 <span className="identity-avatar">{initials}</span>
                 <span className="identity-copy">
                   <b>{activeName}</b>

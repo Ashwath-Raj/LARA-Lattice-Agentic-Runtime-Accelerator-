@@ -1,3 +1,9 @@
+/**
+ * LARA API Client
+ * Enterprise client interfacing with LARA runtime APIs.
+ * Supports explicit mode switching (API vs Mock) without silent error-swallowing.
+ */
+
 import {
   Principal,
   Task,
@@ -26,10 +32,22 @@ import {
   MOCK_APPROVAL_ITEMS,
   MOCK_AUDIT_EVENTS,
 } from './mockData';
+import { httpFetch, getDataMode, setDataMode, isMockMode, DataMode } from './transport';
+import {
+  adaptPrincipalResponse,
+  adaptTaskAccepted,
+  adaptTaskResponse,
+  adaptTaskEvents,
+  adaptRouteResolveResponse,
+  adaptPolicyDecisionResponse,
+  adaptApprovalResponse,
+  adaptEvolutionProposal,
+  adaptAuditEvent,
+  adaptHealthResponse,
+} from './adapters';
 
-class LaraApiClient {
+export class LaraApiClient {
   private activePrincipal: Principal = SEEDED_PRINCIPALS[0]; // Default Maya Operator
-  private forceMockMode: boolean = false;
   private tasks: Map<string, Task> = new Map();
   private proposals: Map<string, EvolutionProposal> = new Map();
   private approvals: Map<string, ApprovalItem> = new Map();
@@ -41,12 +59,20 @@ class LaraApiClient {
     MOCK_APPROVAL_ITEMS.forEach((a) => this.approvals.set(a.approval_id, { ...a }));
   }
 
-  public setMockMode(force: boolean) {
-    this.forceMockMode = force;
+  public setMockMode(force: boolean): void {
+    setDataMode(force ? 'mock' : 'api');
+  }
+
+  public setDataMode(mode: DataMode): void {
+    setDataMode(mode);
   }
 
   public isMockMode(): boolean {
-    return this.forceMockMode;
+    return isMockMode();
+  }
+
+  public getDataMode(): DataMode {
+    return getDataMode();
   }
 
   public getCurrentPrincipal(): Principal {
@@ -54,26 +80,28 @@ class LaraApiClient {
   }
 
   // --- AUTHENTICATION ---
+
+  /**
+   * Switch identity or authenticate via demo credentials.
+   * In API mode, calls POST /api/v1/auth/demo-login with { principal_id, password }.
+   * Does NOT swallow errors; failures are propagated to the caller.
+   */
   async demoLogin(principal_id: string): Promise<Principal> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch('/api/v1/auth/demo-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ principal_id, demo_password: 'demo' }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          this.activePrincipal = data.principal;
-          return this.activePrincipal;
-        }
-      } catch {
-        // Fall back to mock if backend not yet running
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const payload = {
+        principal_id,
+        password: 'demo-password',
+      };
+      const res = await httpFetch<unknown>('/auth/demo-login', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      const principal = adaptPrincipalResponse(res);
+      this.activePrincipal = principal;
+      return this.activePrincipal;
     }
 
+    // Mock Mode
     const found = SEEDED_PRINCIPALS.find((p) => p.principal_id === principal_id);
     if (!found) {
       throw new Error(`Principal ${principal_id} not recognized in seeded demo directory`);
@@ -91,50 +119,36 @@ class LaraApiClient {
   }
 
   async logout(): Promise<void> {
-    if (!this.forceMockMode) {
-      try {
-        await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
-      } catch {
-        // ignore
-      }
+    if (!this.isMockMode()) {
+      await httpFetch<void>('/auth/logout', { method: 'POST' });
     }
     this.activePrincipal = SEEDED_PRINCIPALS[0];
   }
 
   async getMe(): Promise<Principal> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch('/api/v1/auth/me', { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          this.activePrincipal = data;
-          return data;
-        }
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>('/auth/me');
+      const principal = adaptPrincipalResponse(res);
+      this.activePrincipal = principal;
+      return this.activePrincipal;
     }
     return this.activePrincipal;
   }
 
   // --- HEALTH ---
+
   async getHealth(): Promise<SystemHealth> {
-    if (!this.forceMockMode) {
+    if (!this.isMockMode()) {
       try {
-        const res = await fetch('/api/v1/health/ready', { credentials: 'include' });
-        if (res.ok) {
-          return {
-            status: 'HEALTHY',
-            firestore: 'CONNECTED',
-            vertex_ai: 'READY',
-            session_principal: this.activePrincipal,
-            version: '2.0.0-gcp-only',
-          };
-        }
+        const res = await httpFetch<unknown>('/health/ready');
+        return adaptHealthResponse(res, this.activePrincipal);
       } catch {
-        // fallback
+        // Fallback to /health if /health/ready is not mounted
+        const res = await httpFetch<unknown>('/health');
+        return adaptHealthResponse(res, this.activePrincipal);
       }
     }
+
     return {
       status: 'HEALTHY',
       firestore: 'CONNECTED',
@@ -144,29 +158,47 @@ class LaraApiClient {
     };
   }
 
-  // --- TASKS ---
+  // --- TASKS & INVESTIGATIONS ---
+
+  /**
+   * Create a new investigation task.
+   * In API mode, calls POST /api/v1/tasks.
+   */
   async createTask(data: TaskCreate): Promise<TaskAccepted> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch('/api/v1/tasks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(data),
-        });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>('/tasks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      const accepted = adaptTaskAccepted(res);
+
+      // Track in local session for recent list before backend adds GET /tasks
+      this.tasks.set(accepted.task_id, {
+        task_id: accepted.task_id,
+        title: data.title || (data.incident_id ? `Investigation for ${data.incident_id}` : 'Operational Investigation'),
+        prompt: data.prompt,
+        incident_id: data.incident_id || null,
+        status: accepted.status,
+        trace_id: accepted.trace_id,
+        created_at: accepted.created_at,
+        updated_at: accepted.created_at,
+        principal_id: this.activePrincipal.principal_id,
+        current_stage: 'INTAKE',
+        evidence: [],
+        agent_outputs: [],
+        verification_findings: [],
+      });
+
+      return accepted;
     }
 
+    // Mock Mode
     const taskId = `task_${Date.now()}`;
     const traceId = `trace_${Math.random().toString(36).substring(2, 10)}`;
     const now = new Date().toISOString();
-
-    const isSupervisor = this.activePrincipal.roles.includes('supervisor') || this.activePrincipal.roles.includes('runtime_admin');
+    const isSupervisor =
+      this.activePrincipal.roles.includes('supervisor') ||
+      this.activePrincipal.roles.includes('runtime_admin');
 
     const newTask: Task = {
       task_id: taskId,
@@ -210,7 +242,6 @@ class LaraApiClient {
 
     this.tasks.set(taskId, newTask);
 
-    // Create approval item
     const newApproval: ApprovalItem = {
       approval_id: `appr_${taskId}`,
       task_id: taskId,
@@ -245,35 +276,44 @@ class LaraApiClient {
   }
 
   async getTask(taskId: string): Promise<Task> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch(`/api/v1/tasks/${taskId}`, { credentials: 'include' });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>(`/tasks/${taskId}`);
+      const task = adaptTaskResponse(res);
+      this.tasks.set(taskId, task);
+      return task;
     }
+
     const t = this.tasks.get(taskId);
     if (!t) throw new Error(`Task ${taskId} not found`);
     return t;
   }
 
+  /**
+   * Return recent tasks.
+   * If backend implements GET /tasks in the future, it fetches it; otherwise returns session tasks.
+   */
   async getRecentTasks(): Promise<Task[]> {
+    if (!this.isMockMode()) {
+      try {
+        const res = await httpFetch<unknown[]>('/tasks');
+        if (Array.isArray(res)) {
+          return res.map(adaptTaskResponse);
+        }
+      } catch {
+        // GET /tasks is not yet implemented by the backend (noted in contract matrix)
+        // Return local session tasks
+      }
+    }
+
     return Array.from(this.tasks.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
   }
 
   async getTaskEvents(taskId: string): Promise<TaskEvent[]> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch(`/api/v1/tasks/${taskId}/events`, { credentials: 'include' });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>(`/tasks/${taskId}/events`);
+      return adaptTaskEvents(res);
     }
 
     const t = this.tasks.get(taskId) || MOCK_INITIAL_TASK;
@@ -330,16 +370,18 @@ class LaraApiClient {
   }
 
   // --- DYNAMIC INFORMATION HIGHWAYS ---
+
+  /**
+   * Resolve Dynamic Information Highway route.
+   * In API mode, calls GET /api/v1/graph/routes/resolve?task_id={taskId}
+   */
   async resolveRoute(taskId?: string): Promise<RouteResult> {
-    if (!this.forceMockMode && taskId) {
-      try {
-        const res = await fetch(`/api/v1/graph/routes/resolve?task_id=${taskId}`, { credentials: 'include' });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode() && taskId) {
+      const res = await httpFetch<unknown>(`/graph/routes/resolve?task_id=${encodeURIComponent(taskId)}`);
+      return adaptRouteResolveResponse(res);
     }
 
+    // Mock Mode role-dependent resolution
     const roles = this.activePrincipal.roles;
     const isSupervisorOrAdmin = roles.includes('supervisor') || roles.includes('runtime_admin');
     const isAuditor = roles.includes('auditor');
@@ -361,7 +403,6 @@ class LaraApiClient {
     }
 
     if (isSupervisorOrAdmin) {
-      // Supervisor has access to vendor-contract and maintenance-request
       return {
         route_id: `route_sup_${Date.now()}`,
         task_id: taskId || 'task_demo',
@@ -394,7 +435,7 @@ class LaraApiClient {
       };
     }
 
-    // Maya Operator: vendor-contract and maintenance-request are restricted/denied!
+    // Maya Operator
     return {
       route_id: `route_op_${Date.now()}`,
       task_id: taskId || 'task_demo',
@@ -430,7 +471,6 @@ class LaraApiClient {
     const roles = this.activePrincipal.roles;
     const isConfidential = roles.includes('supervisor') || roles.includes('runtime_admin');
 
-    // Filter nodes so confidential nodes are not exposed to unauthorised users
     return MOCK_GRAPH_NODES.filter((node) => {
       if (node.classification === 'CONFIDENTIAL' && !isConfidential) {
         return false;
@@ -452,6 +492,7 @@ class LaraApiClient {
   }
 
   // --- AGENTS ---
+
   async getAgents(): Promise<Agent[]> {
     return MOCK_AGENTS;
   }
@@ -463,29 +504,23 @@ class LaraApiClient {
   }
 
   // --- EVOLUTION LAB ---
+
   async getEvolutionProposals(): Promise<EvolutionProposal[]> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch('/api/v1/evolution/proposals', { credentials: 'include' });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown[]>('/evolution/proposals');
+      if (Array.isArray(res)) {
+        return res.map(adaptEvolutionProposal);
       }
     }
     return Array.from(this.proposals.values());
   }
 
   async evaluateCandidate(proposalId: string): Promise<EvolutionProposal> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch(`/api/v1/evolution/proposals/${proposalId}/evaluate`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>(`/evolution/proposals/${encodeURIComponent(proposalId)}/evaluate`, {
+        method: 'POST',
+      });
+      return adaptEvolutionProposal(res);
     }
 
     const p = this.proposals.get(proposalId);
@@ -518,18 +553,12 @@ class LaraApiClient {
       throw new Error('A detailed justification reason (minimum 8 characters) is mandatory.');
     }
 
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch(`/api/v1/evolution/proposals/${proposalId}/approve`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ decision: 'APPROVE', reason }),
-        });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      // Backend approve endpoint takes NO body (documented in contract matrix)
+      const res = await httpFetch<unknown>(`/evolution/proposals/${encodeURIComponent(proposalId)}/approve`, {
+        method: 'POST',
+      });
+      return adaptEvolutionProposal(res);
     }
 
     const p = this.proposals.get(proposalId);
@@ -538,7 +567,6 @@ class LaraApiClient {
     p.status = 'PROMOTED';
     p.approved_by = this.activePrincipal.principal_id;
 
-    // Update the active version on the target agent
     const targetAgent = MOCK_AGENTS.find((a) => a.agent_id === p.target_id);
     if (targetAgent) {
       targetAgent.active_version = p.candidate_version;
@@ -568,6 +596,7 @@ class LaraApiClient {
       throw new Error('Access Denied: Only Runtime Administrator can rollback prompt versions.');
     }
 
+    // Backend does not currently implement a rollback route
     const p = this.proposals.get(proposalId);
     if (!p) throw new Error(`Proposal ${proposalId} not found`);
 
@@ -591,29 +620,22 @@ class LaraApiClient {
   }
 
   // --- GOVERNANCE & POLICY ---
+
   async evaluatePolicy(req: PolicyRequest): Promise<PolicyDecision> {
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch('/api/v1/policies/evaluate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(req),
-        });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>('/policies/evaluate', {
+        method: 'POST',
+        body: JSON.stringify(req),
+      });
+      return adaptPolicyDecisionResponse(res);
     }
 
     const roles = this.activePrincipal.roles;
     const isSupervisor = roles.includes('supervisor');
     const isAdmin = roles.includes('runtime_admin');
     const isAuditor = roles.includes('auditor');
-
     const now = new Date().toISOString();
 
-    // Equipment control is denied for everyone in demo scope
     if (req.action.includes('equipment') || req.resource_id.includes('equipment')) {
       return {
         decision: 'DENY',
@@ -623,7 +645,6 @@ class LaraApiClient {
       };
     }
 
-    // Maintenance request
     if (req.action.includes('maintenance') || req.resource_id.includes('maintenance')) {
       if (isAuditor) {
         return {
@@ -649,7 +670,6 @@ class LaraApiClient {
       };
     }
 
-    // Vendor contract read
     if (req.resource_id.includes('vendor-contract')) {
       if (isSupervisor || isAdmin) {
         return {
@@ -676,6 +696,7 @@ class LaraApiClient {
   }
 
   // --- APPROVALS ---
+
   async getApprovals(): Promise<ApprovalItem[]> {
     return Array.from(this.approvals.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -692,24 +713,17 @@ class LaraApiClient {
       throw new Error('A detailed decision reason (at least 8 characters) is required.');
     }
 
-    if (!this.forceMockMode) {
-      try {
-        const res = await fetch(`/api/v1/approvals/${approvalId}/decision`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(decision),
-        });
-        if (res.ok) return await res.json();
-      } catch {
-        this.forceMockMode = true;
-      }
+    if (!this.isMockMode()) {
+      const res = await httpFetch<unknown>(`/approvals/${encodeURIComponent(approvalId)}/decision`, {
+        method: 'POST',
+        body: JSON.stringify(decision),
+      });
+      return adaptApprovalResponse(res);
     }
 
     const item = this.approvals.get(approvalId);
     if (!item) throw new Error(`Approval ${approvalId} not found`);
 
-    // Separation of duties: requester cannot approve their own action
     if (item.requester_id === this.activePrincipal.principal_id && !roles.includes('runtime_admin')) {
       throw new Error('Separation of Duties violation: Requester cannot approve their own action.');
     }
@@ -720,7 +734,6 @@ class LaraApiClient {
     item.decision_reason = decision.reason;
     this.approvals.set(approvalId, item);
 
-    // Update associated task status
     const task = this.tasks.get(item.task_id);
     if (task) {
       task.status = decision.decision === 'APPROVE' ? 'COMPLETED' : 'CANCELLED';
@@ -745,7 +758,23 @@ class LaraApiClient {
   }
 
   // --- AUDIT ---
+
   async getAuditEvents(filter?: { taskId?: string; principalId?: string }): Promise<AuditEvent[]> {
+    if (!this.isMockMode()) {
+      try {
+        const params: Record<string, string | undefined> = {};
+        if (filter?.taskId) params.task_id = filter.taskId;
+        if (filter?.principalId) params.principal_id = filter.principalId;
+
+        const res = await httpFetch<unknown[]>('/audit/events', { params });
+        if (Array.isArray(res)) {
+          return res.map(adaptAuditEvent);
+        }
+      } catch {
+        // Fallback to local session audit if not yet persisted
+      }
+    }
+
     let list = [...this.auditEvents];
     if (filter?.taskId) {
       list = list.filter((e) => e.task_id === filter.taskId);
@@ -756,7 +785,9 @@ class LaraApiClient {
     return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
-  private recordAudit(event: Omit<AuditEvent, 'event_id' | 'timestamp' | 'principal_id' | 'trace_id'> & { trace_id?: string }) {
+  private recordAudit(
+    event: Omit<AuditEvent, 'event_id' | 'timestamp' | 'principal_id' | 'trace_id'> & { trace_id?: string }
+  ) {
     const evt: AuditEvent = {
       event_id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),

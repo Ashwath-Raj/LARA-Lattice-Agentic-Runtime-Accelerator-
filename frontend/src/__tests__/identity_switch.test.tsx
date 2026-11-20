@@ -21,7 +21,7 @@ describe('Identity Switch & Route Re-fetch Verification', () => {
     expect(operatorRoute.excluded_candidates.some((e) => e.reason_code === 'POLICY_DENIED')).toBe(true);
 
     // Now switch identity to Ravi Supervisor
-    const identityButton = screen.getByLabelText('Switch demo principal');
+    const identityButton = screen.getByLabelText(/Switch demo principal/i);
     fireEvent.click(identityButton);
 
     const supervisorOption = screen.getByText('Ravi Supervisor');

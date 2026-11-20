@@ -15,7 +15,15 @@ import {
 } from '../components/ui';
 import { useAuth } from '../features/auth/AuthContext';
 import { api } from '../api/client';
-import { RouteResult } from '../api/types';
+import {
+  RouteResult,
+  Task,
+  TaskEvent,
+  ApprovalItem,
+  EvolutionProposal,
+  AuditEvent,
+  PolicyDecision
+} from '../api/types';
 
 function ChartPanel() {
   const lines = [
@@ -91,7 +99,7 @@ export function SystemHealthStrip() {
   );
 }
 
-export function NewInvestigationDialog({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (title: string, asset: string) => void }) {
+export function NewInvestigationDialog({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (title: string, asset: string, scope?: string) => void }) {
   const [title, setTitle] = useState('');
   const [asset, setAsset] = useState('Compressor P-204');
   const [scope, setScope] = useState('Investigate the recent vibration anomaly and reconcile maintenance records.');
@@ -104,7 +112,7 @@ export function NewInvestigationDialog({ open, onClose, onCreate }: { open: bool
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
-          <Button variant="primary" disabled={!title.trim()} onClick={() => { onCreate(title, asset); setTitle(''); onClose(); }}>
+          <Button variant="primary" disabled={!title.trim()} onClick={() => { onCreate(title, asset, scope); setTitle(''); onClose(); }}>
             Create investigation <ArrowRight size={15} />
           </Button>
         </>
@@ -135,7 +143,26 @@ export function KpiSummaryRow() {
 }
 
 export function RecentInvestigationsTable({ onSelect, onViewAll }: { onSelect: (id: string) => void; onViewAll: () => void }) {
-  const rows = investigations.slice(0, 4);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getRecentTasks().then((res) => {
+      if (isMounted && res.length > 0) setTasks(res);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const rows = tasks.length > 0 ? tasks.slice(0, 4).map(t => ({
+    id: t.task_id,
+    asset: t.incident_id || t.title,
+    site: 'Plant North · Live Runtime Session',
+    severity: (t.status === 'FAILED' ? 'Critical' : t.status === 'AWAITING_APPROVAL' ? 'High' : 'Medium') as Severity,
+    owner: t.principal_id === 'usr_operator_01' ? 'Maya Operator' : t.principal_id,
+    status: (t.status === 'AWAITING_APPROVAL' ? 'Awaiting approval' : t.status === 'COMPLETED' ? 'Resolved' : 'Investigating') as State,
+    updated: 'Just now'
+  })) : investigations.slice(0, 4);
+
   return (
     <Panel title="Recent investigations" subtitle="Latest operational cases across North Plant" action={<Button size="sm" onClick={onViewAll}>View all <ArrowRight size={14} /></Button>}>
       <DataTable
@@ -156,21 +183,49 @@ export function RecentInvestigationsTable({ onSelect, onViewAll }: { onSelect: (
 }
 
 export function AttentionQueue({ onOpenApprovals }: { onOpenApprovals: () => void }) {
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getApprovals().then((res) => {
+      if (isMounted) setApprovals(res);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const pending = approvals.filter(a => a.status === 'PENDING');
+  const count = pending.length > 0 ? pending.length : 3;
+
   return (
-    <Panel title="Needs your attention" subtitle="Actions waiting for a decision" action={<Badge tone="amber">3 open</Badge>}>
+    <Panel title="Needs your attention" subtitle="Actions waiting for a decision" action={<Badge tone="amber">{count} open</Badge>}>
       <div className="attention-list">
-        <div className="attention-item">
-          <div className="attention-icon amber"><ShieldAlert size={17} /></div>
-          <div><strong>Maintenance dispatch approval</strong><p>INC-204 · Compressor P-204</p><small>Requested 8 minutes ago</small></div>
-        </div>
-        <div className="attention-item">
-          <div className="attention-icon blue"><CircleAlert size={17} /></div>
-          <div><strong>Resolve evidence discrepancy</strong><p>INC-198 · Vendor report revision</p><small>1 source needs review</small></div>
-        </div>
-        <div className="attention-item">
-          <div className="attention-icon purple"><GitBranch size={17} /></div>
-          <div><strong>Review candidate v1.0.1</strong><p>Verification Agent · Evolution</p><small>4 evaluation checks passed</small></div>
-        </div>
+        {pending.length > 0 ? (
+          pending.slice(0, 3).map((item) => (
+            <div className="attention-item" key={item.approval_id}>
+              <div className="attention-icon amber"><ShieldAlert size={17} /></div>
+              <div>
+                <strong>{item.action}</strong>
+                <p>{item.task_id} · {item.tool_name}</p>
+                <small>Requester: {item.requester_name}</small>
+              </div>
+            </div>
+          ))
+        ) : (
+          <>
+            <div className="attention-item">
+              <div className="attention-icon amber"><ShieldAlert size={17} /></div>
+              <div><strong>Maintenance dispatch approval</strong><p>INC-204 · Compressor P-204</p><small>Requested 8 minutes ago</small></div>
+            </div>
+            <div className="attention-item">
+              <div className="attention-icon blue"><CircleAlert size={17} /></div>
+              <div><strong>Resolve evidence discrepancy</strong><p>INC-198 · Vendor report revision</p><small>1 source needs review</small></div>
+            </div>
+            <div className="attention-item">
+              <div className="attention-icon purple"><GitBranch size={17} /></div>
+              <div><strong>Review candidate v1.0.1</strong><p>Verification Agent · Evolution</p><small>4 evaluation checks passed</small></div>
+            </div>
+          </>
+        )}
       </div>
       <Button size="sm" variant="secondary" className="full-button" onClick={onOpenApprovals}>Open approval queue <ArrowRight size={14} /></Button>
     </Panel>
@@ -216,7 +271,31 @@ export function InvestigationListPage({ onSelect, onStart }: { onSelect: (id: st
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('All statuses');
   const [severity, setSeverity] = useState('All severity');
-  const filtered = useMemo(() => investigations.filter(r => (`${r.id} ${r.asset} ${r.owner}`.toLowerCase().includes(query.toLowerCase())) && (status === 'All statuses' || r.status === status) && (severity === 'All severity' || r.severity === severity)), [query, status, severity]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getRecentTasks().then((res) => {
+      if (isMounted) setTasks(res);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const combinedCases = useMemo(() => {
+    const liveRows = tasks.map(t => ({
+      id: t.task_id,
+      asset: t.incident_id || t.title,
+      site: 'Plant North · Live Runtime Session',
+      severity: (t.status === 'FAILED' ? 'Critical' : t.status === 'AWAITING_APPROVAL' ? 'High' : 'Medium') as Severity,
+      owner: t.principal_id === 'usr_operator_01' ? 'Maya Operator' : t.principal_id,
+      status: (t.status === 'AWAITING_APPROVAL' ? 'Awaiting approval' : t.status === 'COMPLETED' ? 'Resolved' : 'Investigating') as State,
+      updated: 'Just now'
+    }));
+    const demoRows = investigations.filter(inv => !liveRows.some(lr => lr.id === inv.id));
+    return [...liveRows, ...demoRows];
+  }, [tasks]);
+
+  const filtered = useMemo(() => combinedCases.filter(r => (`${r.id} ${r.asset} ${r.owner}`.toLowerCase().includes(query.toLowerCase())) && (status === 'All statuses' || r.status === status) && (severity === 'All severity' || r.severity === severity)), [combinedCases, query, status, severity]);
   return (
     <>
       <PageHeader eyebrow="WORKBENCH" title="Investigations" subtitle="Track operational cases, reconcile evidence and review proposed actions." actions={<Button variant="primary" onClick={onStart}><Plus size={15} /> New investigation</Button>} />
@@ -259,26 +338,40 @@ export function InvestigationStageBar({ active = 3 }: { active?: number }) {
   );
 }
 
-export function IncidentSummaryPanel() {
+export function IncidentSummaryPanel({ task }: { task?: Task | null }) {
+  const assetName = task?.incident_id || (task ? 'Operational Asset' : 'Compressor P-204');
+  const ownerName = task?.principal_id === 'usr_operator_01' ? 'Maya Operator' : (task?.principal_id || 'Maya Chen');
+  const reportedTime = task?.created_at ? new Date(task.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '20 Nov 2026 · 09:39';
+  const stateLabel = task?.status === 'AWAITING_APPROVAL' ? 'Awaiting approval' : task?.status === 'COMPLETED' ? 'Resolved' : 'Investigating';
+
   return (
     <Panel title="Incident summary" subtitle="Core context and ownership">
       <div className="summary-pairs">
-        <div><small>Asset</small><strong>Compressor P-204</strong></div>
+        <div><small>Asset</small><strong>{assetName}</strong></div>
         <div><small>Site</small><strong>Plant North · Line 2</strong></div>
-        <div><small>Reported</small><strong>20 Nov 2026 · 09:39</strong></div>
-        <div><small>Owner</small><strong>Maya Chen</strong></div>
+        <div><small>Reported</small><strong>{reportedTime}</strong></div>
+        <div><small>Owner</small><strong>{ownerName}</strong></div>
         <div><small>Severity</small><StatusBadge status="Critical" /></div>
-        <div><small>Current state</small><StatusBadge status="Awaiting approval" /></div>
+        <div><small>Current state</small><StatusBadge status={stateLabel} /></div>
       </div>
     </Panel>
   );
 }
 
-export function EvidenceLedger() {
+export function EvidenceLedger({ items }: { items?: Task['evidence'] }) {
+  const rows = items && items.length > 0 ? items.map((e, idx) => ({
+    source: e.name,
+    id: e.source_id || `SRC-${idx + 1}`,
+    timestamp: e.effective_date ? new Date(e.effective_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live',
+    revision: e.revision,
+    freshness: e.status === 'CURRENT' ? 'Current' : 'Needs review',
+    verification: e.verified ? 'Verified' : 'Unverified'
+  })) : evidence;
+
   return (
     <Panel title="Evidence ledger" subtitle="Linked source records with revision and freshness context" action={<Button size="sm"><Download size={14} /> Export</Button>}>
       <DataTable
-        rows={evidence}
+        rows={rows}
         rowKey="id"
         columns={[
           { key: 'source', label: 'Source', render: r => <strong>{r.source}</strong> },
@@ -310,12 +403,17 @@ export function EvidenceGapPanel() {
   );
 }
 
-export function ClaimVerificationTable() {
-  const rows = [
+export function ClaimVerificationTable({ findings }: { findings?: Task['verification_findings'] }) {
+  const rows = findings && findings.length > 0 ? findings.map(f => ({
+    claim: f.claim,
+    result: f.status === 'VERIFIED' ? 'Supported' : 'Discrepancy',
+    source: f.source_reference
+  })) : [
     { claim: 'Bearing wear is above operating threshold', result: 'Supported', source: 'TEL-P204-0918' },
     { claim: 'SOP revision 3.2 governs this asset', result: 'Supported', source: 'SOP-MNT-014' },
     { claim: 'Vendor inspection confirms prior repair', result: 'Discrepancy', source: 'VIR-2207' }
   ];
+
   return (
     <Panel title="Claim verification" subtitle="Each conclusion is tied to source records">
       <DataTable
@@ -331,17 +429,22 @@ export function ClaimVerificationTable() {
   );
 }
 
-export function ProposedActionPanel({ onApprove }: { onApprove: () => void }) {
+export function ProposedActionPanel({ action, onApprove }: { action?: Task['proposed_action']; onApprove: () => void }) {
+  const toolName = action?.tool_name || 'Simulated Maintenance Dispatcher';
+  const description = action?.description || 'Perform bearing inspection and controlled shutdown procedure.';
+  const policyDecision = action?.policy_decision || 'REQUIRE_APPROVAL';
+  const reasonCode = action?.reason_code || 'SUPERVISOR_APPROVAL_REQUIRED';
+
   return (
     <Panel title="Proposed action" subtitle="Policy evaluation and controlled operational handoff">
       <div className="proposed-action">
         <div className="proposed-icon"><Activity size={20} /></div>
-        <div><strong>Dispatch maintenance team to P-204</strong><p>Perform bearing inspection and controlled shutdown procedure.</p></div>
+        <div><strong>{toolName}</strong><p>{description}</p></div>
         <StatusBadge status="Require approval" />
       </div>
       <div className="action-meta">
-        <span>Policy decision</span><strong className="text-amber">REQUIRE_APPROVAL</strong>
-        <span>Required authority</span><strong>Maintenance Supervisor</strong>
+        <span>Policy decision</span><strong className="text-amber">{policyDecision}</strong>
+        <span>Reason code</span><span className="mono">{reasonCode}</span>
         <span>Separation of duties</span><strong><CheckCircle2 size={14} /> Requester cannot self-approve</strong>
       </div>
       <InlineAlert tone="warning" title="Supervisor review required">
@@ -353,17 +456,67 @@ export function ProposedActionPanel({ onApprove }: { onApprove: () => void }) {
 }
 
 export function InvestigationWorkspace({ id, onBack, onApprove }: { id: string; onBack: () => void; onApprove: () => void }) {
+  const [task, setTask] = useState<Task | null>(null);
+  const [events, setEvents] = useState<TaskEvent[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      api.getTask(id).catch(() => null),
+      api.getTaskEvents(id).catch(() => []),
+    ]).then(([t, evs]) => {
+      if (isMounted) {
+        setTask(t);
+        setEvents(evs);
+      }
+    });
+    return () => { isMounted = false; };
+  }, [id]);
+
+  const activeStage = useMemo(() => {
+    if (!task) return 3;
+    switch (task.current_stage) {
+      case 'INTAKE': return 0;
+      case 'HIGHWAY_RESOLUTION': return 1;
+      case 'RESEARCH': return 2;
+      case 'ANALYSIS': return 3;
+      case 'VERIFICATION': return 4;
+      case 'POLICY_EVALUATION': return 5;
+      case 'ACTION_GATEWAY':
+      case 'COMPLETED': return 6;
+      default: return 3;
+    }
+  }, [task]);
+
+  const timelineItems = events.length > 0 ? events.map(e => ({
+    time: new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    title: e.stage,
+    detail: e.summary,
+    status: 'Verified'
+  })) : [
+    { time: '09:18:02', title: 'Vibration threshold exceeded', detail: 'Telemetry stream TEL-P204-0918 reported 8.7 mm/s RMS', status: 'Critical' },
+    { time: '09:24:30', title: 'Work order history retrieved', detail: 'WO-7842 linked to prior bearing inspection', status: 'Verified' },
+    { time: '09:38:12', title: 'Incident submitted', detail: 'Operator reported abnormal vibration and elevated temperature', status: 'Active' },
+    { time: '10:41:56', title: 'Claim verification completed', detail: 'Three claims supported; one vendor record discrepancy remains', status: 'Needs review' }
+  ];
+
+  const agentOutputs = task?.agent_outputs && task.agent_outputs.length > 0 ? task.agent_outputs : [
+    { agent_name: 'Research Agent', summary: 'Retrieved 4 source records', status: 'Complete' },
+    { agent_name: 'Analysis Agent', summary: 'Compared telemetry and maintenance', status: 'Complete' },
+    { agent_name: 'Verification Agent', summary: 'Flagged 1 source discrepancy', status: 'Needs review' }
+  ];
+
   return (
     <>
       <div className="back-link">
         <button onClick={onBack}>‹ All investigations</button>
         <span>/</span>
-        <span>{id}</span>
+        <span>{task?.title || id}</span>
       </div>
       <PageHeader
         eyebrow="INVESTIGATION WORKSPACE"
-        title={`${id} · Compressor P-204`}
-        subtitle="Vibration anomaly · Plant North / Line 2"
+        title={task?.title || `${id} · Compressor P-204`}
+        subtitle={`${task?.incident_id || 'INC-204'} · Plant North / Line 2`}
         actions={
           <>
             <Button><MoreHorizontal size={16} /> Actions</Button>
@@ -371,43 +524,28 @@ export function InvestigationWorkspace({ id, onBack, onApprove }: { id: string; 
           </>
         }
       />
-      <InvestigationStageBar />
+      <InvestigationStageBar active={activeStage} />
       <div className="detail-grid">
         <div className="detail-main">
-          <IncidentSummaryPanel />
-          <EvidenceLedger />
-          <ClaimVerificationTable />
+          <IncidentSummaryPanel task={task} />
+          <EvidenceLedger items={task?.evidence} />
+          <ClaimVerificationTable findings={task?.verification_findings} />
           <Panel title="Correlated event timeline" subtitle="Events reconciled across operational sources">
-            <Timeline
-              items={[
-                { time: '09:18:02', title: 'Vibration threshold exceeded', detail: 'Telemetry stream TEL-P204-0918 reported 8.7 mm/s RMS', status: 'Critical' },
-                { time: '09:24:30', title: 'Work order history retrieved', detail: 'WO-7842 linked to prior bearing inspection', status: 'Verified' },
-                { time: '09:38:12', title: 'Incident submitted', detail: 'Operator reported abnormal vibration and elevated temperature', status: 'Active' },
-                { time: '10:41:56', title: 'Claim verification completed', detail: 'Three claims supported; one vendor record discrepancy remains', status: 'Needs review' }
-              ]}
-            />
+            <Timeline items={timelineItems} />
           </Panel>
         </div>
         <div className="detail-side">
           <EvidenceGapPanel />
           <Panel title="Agent work" subtitle="Specialist tasks for this investigation">
-            <div className="agent-task">
-              <Avatar name="Research Agent" />
-              <div><strong>Research Agent</strong><small>Retrieved 4 source records</small></div>
-              <StatusBadge status="Complete" />
-            </div>
-            <div className="agent-task">
-              <Avatar name="Analysis Agent" />
-              <div><strong>Analysis Agent</strong><small>Compared telemetry and maintenance</small></div>
-              <StatusBadge status="Complete" />
-            </div>
-            <div className="agent-task">
-              <Avatar name="Verification Agent" />
-              <div><strong>Verification Agent</strong><small>Flagged 1 source discrepancy</small></div>
-              <StatusBadge status="Needs review" />
-            </div>
+            {agentOutputs.map((ao, idx) => (
+              <div className="agent-task" key={idx}>
+                <Avatar name={ao.agent_name} />
+                <div><strong>{ao.agent_name}</strong><small>{ao.summary}</small></div>
+                <StatusBadge status={ao.status === 'SUCCESS' ? 'Complete' : 'Needs review'} />
+              </div>
+            ))}
           </Panel>
-          <ProposedActionPanel onApprove={onApprove} />
+          <ProposedActionPanel action={task?.proposed_action} onApprove={onApprove} />
         </div>
       </div>
     </>

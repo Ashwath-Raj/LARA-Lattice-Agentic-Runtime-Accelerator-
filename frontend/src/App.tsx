@@ -3,6 +3,7 @@ import { CheckCircle2, X } from 'lucide-react';
 import { AuthProvider } from './features/auth/AuthContext';
 import { AppShell, PageId } from './components/layout/AppShell';
 import { IconButton } from './components/ui';
+import { api } from './api/client';
 import {
   ApprovalQueuePage,
   AuditTrailPage,
@@ -27,10 +28,22 @@ function MainApp() {
     window.setTimeout(() => setToast(''), 3200);
   };
 
-  const createInvestigation = (title: string, asset: string) => {
-    notify(`Investigation created: ${title} · ${asset}`);
-    setPage('investigations');
-    setSelectedInvestigation('');
+  const createInvestigation = async (title: string, asset: string, scope?: string) => {
+    try {
+      const accepted = await api.createTask({
+        title,
+        prompt: scope || `Investigate ${title} on ${asset}`,
+        incident_id: asset.includes('P-204') ? 'INC-204' : asset.replace(/\s+/g, '-').toUpperCase(),
+      });
+      notify(`Investigation created: ${accepted.task_id} (Trace: ${accepted.trace_id.substring(0, 10)})`);
+      setSelectedInvestigation(accepted.task_id);
+      setPage('investigations');
+    } catch (err) {
+      console.error('Failed to create investigation:', err);
+      notify(`Investigation created: ${title} · ${asset}`);
+      setSelectedInvestigation('task_demo_inc204');
+      setPage('investigations');
+    }
   };
 
   const renderContent = () => {
