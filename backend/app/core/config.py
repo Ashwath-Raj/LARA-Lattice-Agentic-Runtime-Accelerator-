@@ -27,12 +27,12 @@ class Settings(BaseSettings):
         description="Explicit allowed CORS origins. Wildcard * prohibited when credentials are enabled."
     )
 
-    # Google Cloud settings (Target Project: lara-runtime-ashwath-2026)
+    # Google Cloud settings (Target Project must be supplied by the user/environment)
     GOOGLE_CLOUD_PROJECT: Optional[str] = Field(default=None, description="GCP project ID; required in production")
     FIRESTORE_DATABASE: str = Field(default="(default)")
     GCS_BUCKET: Optional[str] = Field(default=None, description="Private GCS bucket; required in production")
-    VERTEX_AI_LOCATION: str = Field(default="asia-south1")
-    VERTEX_AI_MODEL: str = Field(default="gemini-2.5-flash")
+    VERTEX_AI_LOCATION: str = Field(default="global", description="Vertex AI location (e.g. global, asia-northeast1)")
+    VERTEX_AI_MODEL: str = Field(default="gemini-3.8-flash", description="Vertex AI model; gemini-2.5-flash retired Oct 2026")
 
     # goboxd Sandbox Settings
     GOBOXD_BASE_URL: str = Field(default="http://localhost:8081")

@@ -1,23 +1,32 @@
 # Cloud Build pipeline for LARA:
-# 1. Frontend verification (npm ci, lint, test, build)
+# 1. Frontend verification (npm ci, oxlint, test, build)
 # 2. Backend verification (pytest -v)
 # 3. Multi-stage container build with immutable SHA tag
 # 4. Artifact Registry push
-# 5. Cloud Run staging deployment with Secret Manager bindings
+# 5. Cloud Run staging deployment with Secret Manager bindings & user-managed service accounts
 
 substitutions:
   _REGION: asia-south1
   _SERVICE: lara-runtime-staging
   _REPOSITORY: lara-staging-repo
+  _BUILD_SA: lara-build-sa@${PROJECT_ID}.iam.gserviceaccount.com
   _RUNTIME_SA: lara-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com
-  _VERTEX_MODEL: gemini-2.5-flash
-  _VERTEX_LOCATION: asia-south1
+  _VERTEX_MODEL: gemini-3.8-flash
+  _VERTEX_LOCATION: global
   _GCS_BUCKET: ${PROJECT_ID}-lara-assets
   _FIRESTORE_DB: (default)
 
+# Enforce user-managed least-privilege service account for Cloud Build execution
+# (Requires roles/logging.logWriter, roles/artifactregistry.writer, roles/run.developer, and roles/iam.serviceAccountUser on _RUNTIME_SA)
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/${_BUILD_SA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 steps:
-  # Gate 1: Frontend dependency installation, tests, and build
+  # Gate 1: Frontend dependency installation, static analysis, unit tests, and build
   - name: node:22-alpine
+    id: 'frontend-gate'
     entrypoint: sh
     args:
       - -c
@@ -28,8 +37,9 @@ steps:
         npm test -- --run
         npm run build
 
-  # Gate 2: Backend tests
+  # Gate 2: Backend pytest test suite execution
   - name: python:3.12-slim
+    id: 'backend-gate'
     entrypoint: bash
     args:
       - -c
@@ -37,8 +47,9 @@ steps:
         pip install --no-cache-dir -r requirements.txt
         pytest -v
 
-  # Gate 3: Build multi-stage container image with immutable SHA tag
+  # Gate 3: Build multi-stage container image with immutable commit SHA tag
   - name: gcr.io/cloud-builders/docker
+    id: 'docker-build'
     args:
       - build
       - -t
@@ -47,14 +58,16 @@ steps:
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest'
       - .
 
-  # Gate 4: Push image to Artifact Registry
+  # Gate 4: Push container image to Artifact Registry
   - name: gcr.io/cloud-builders/docker
+    id: 'docker-push'
     args:
       - push
       - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'
 
   # Gate 5: Deploy staging revision to Cloud Run
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: 'cloud-run-deploy'
     entrypoint: gcloud
     args:
       - run

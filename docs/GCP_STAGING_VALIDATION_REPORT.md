@@ -1,11 +1,13 @@
 # LARA — GCP Staging Validation & Acceptance Report
 
-**Integration Branch:** `integrate/lara-gcp-staging`  
-**Remote Branch:** `origin/integrate/lara-gcp-staging`  
-**Integration Commit SHA:** `16ca14b6474f4465133472a84a4bd57c8877604c`  
-**Pull Request Target:** `main` (`https://github.com/Ashwath-Raj/LARA-Lattice-Agentic-Runtime-Accelerator-/compare/main...integrate/lara-gcp-staging`)  
-**Repository:** `Ashwath-Raj/LARA-Lattice-Agentic-Runtime-Accelerator-`  
-**Date of Audit:** 2026-11-21  
+**Integration Branch:** `integrate/lara-gcp-staging`<br>
+**Remote Branch:** `origin/integrate/lara-gcp-staging`<br>
+**Baseline Integration Commit SHA:** `16ca14b6474f4465133472a84a4bd57c8877604c`<br>
+**Published Remote Integration HEAD SHA:** `176519b3a6013853a845a75d7d0ef80a9addcd31`<br>
+**Compare Target:** `main` (`https://github.com/Ashwath-Raj/LARA-Lattice-Agentic-Runtime-Accelerator-/compare/main...integrate/lara-gcp-staging`)<br>
+**Pull Request Status:** Compare URL prepared; no numbered pull request opened yet (`gh` CLI not available on host; credentials not provided)<br>
+**Repository:** `Ashwath-Raj/LARA-Lattice-Agentic-Runtime-Accelerator-`<br>
+**Date of Audit:** 2026-11-21<br>
 **Integrator:** Antigravity (LARA Integration & Staging Engineer)  
 
 ---
@@ -14,15 +16,17 @@
 
 | Acceptance Dimension | Status | Verified Evidence & Ground Truth |
 | :--- | :---: | :--- |
-| **Branch & Git Safety** | **PASS** | Original branches `feat/ashwath-runtime-goboxd-integration` (`9047f3a`) and `feature/praneeth-frontend` (`1e10bcc`) remain 100% intact. Integration work isolated on `integrate/lara-gcp-staging`. |
+| **Branch & Git Safety** | **PASS** | Original branches `feat/ashwath-runtime-goboxd-integration` (`9047f3a`) and `feature/praneeth-frontend` (`4d092e3`) remain 100% intact. Integration work strictly isolated on `integrate/lara-gcp-staging`. |
 | **Frontend Implementation** | **PASS** | Praneeth's Bright Lattice UI (React 19, TypeScript, tokens, UI primitives) fully integrated and verified. |
 | **Backend Implementation** | **PASS** | All 42 FastAPI routes, Pydantic schemas, policy engine, Highways resolver, Agent registry, and Evolution engine verified. |
-| **Automated Test Gates** | **PASS** | **Backend Pytest:** 79 passed, 2 skipped (0 failures).<br>**Frontend Vitest:** 20 passed (0 failures).<br>**Linter:** Oxlint passed with 0 errors. |
+| **Automated Backend Test Gates** | **PASS** | 79 passed, 2 skipped (0 failures) via `python -m pytest -v`. |
+| **Automated Frontend Test Gates** | **PASS** | 20 passed (0 failures) via `npm test -- --run`. Oxlint passed with 0 errors across 45 files. |
 | **Single-Origin Static Mounting** | **PASS** | `npm run build` outputs directly to `backend/app/static`. FastAPI mounts `/` serving React SPA, with `/api/v1/*` routes functioning cleanly. |
 | **API Contract & Truthful Provenance** | **PASS** | False success toasts and demo fallbacks eliminated in API mode. Added `GET /tasks` and `GET /graph/edges` with tenant/role scoping. |
-| **Container & CI Build Pipeline** | **PASS** | Multi-stage `Dockerfile` and `cloudbuild.yaml` verified. Secret Manager bindings and user-project substitutions configured. |
-| **Cloud Service Deployment** | **BLOCKED** | Blocked by local environment dependencies: `gcloud` CLI not installed, Docker daemon not running, and target GCP user project not configured. |
-| **goboxd / nsjail Sandbox VM** | **BLOCKED** | Blocked pending GCE VM provisioning on private VPC subnet. Fail-closed kill-switch is active. |
+| **Docker Container Compilation** | **CONFIGURED / NOT EXECUTED** | Multi-stage `Dockerfile` configured; Docker CLI 29.5.3 present, daemon inactive (`//./pipe/dockerDesktopLinuxEngine` unavailable). |
+| **Cloud Build Pipeline** | **CONFIGURED / NOT EXECUTED** | `cloudbuild.yaml` fully configured with user-managed service account (`lara-build-sa`), Secret Manager bindings, and user project substitutions. Not executed locally (`gcloud` CLI not installed). |
+| **GCP Staging Infrastructure** | **BLOCKED** | Blocked by local environment prerequisites: `gcloud` CLI not installed, user GCP project ID required, billing required. |
+| **goboxd / nsjail Sandbox VM** | **BLOCKED** | Blocked pending GCE VM provisioning on private VPC subnet. Fail-closed kill switch (`GOBOXD_KILL_SWITCH=true`) active. |
 
 ---
 
@@ -79,6 +83,12 @@ Output:
 Build Duration: 443ms (0 errors)
 ```
 
+### 2.4 Linter Audit
+```
+Command: npx oxlint src
+Results: 0 errors across 45 files (pass)
+```
+
 ---
 
 ## 3. Real Backend & API Verification
@@ -94,9 +104,9 @@ Build Duration: 443ms (0 errors)
 
 ## 4. Current Blockers to Live Cloud Deployment
 
-In adherence to Section 15 of the Master Prompt (*Stop conditions — do not work around these*), the following blockers prevent automatic live deployment to GCP at this immediate turn:
+In adherence to the LARA Cloud Readiness Safety Rules, the following blockers prevent automatic live deployment to GCP at this immediate turn:
 
 1. **`gcloud` CLI Not Installed:** The `gcloud` command-line tool is not installed or available in PATH on this Windows host.
-2. **Target User Project Unspecified:** The deployment requires the user's authenticated Google Cloud project and billing account. In accordance with safety rules, no deployment may target Ashwath's development project (`lara-runtime-ashwath-2026`).
-3. **Docker Daemon Inactive:** Docker Desktop is installed but the local engine pipe (`//./pipe/dockerDesktopLinuxEngine`) is not running.
-4. **goboxd Sandbox VM:** Compute Engine VM is not provisioned; `GOBOXD_KILL_SWITCH` remains safely set to `true`.
+2. **Target User Project Unspecified:** The deployment requires the user's authenticated Google Cloud project and billing account. In accordance with safety rules, no deployment may target Ashwath's development project (`lara-runtime-ashwath-2026`). All project references have been cleansed from configuration files.
+3. **Docker Daemon Inactive:** Docker Desktop is installed (CLI 29.5.3) but the local engine pipe (`//./pipe/dockerDesktopLinuxEngine`) is not running.
+4. **goboxd Sandbox VM:** Compute Engine VM is not provisioned; `GOBOXD_KILL_SWITCH` remains safely set to `true`. Plain HTTP on port 8081 requires TLS/mTLS reverse-proxy and VPC egress before live production exposure.

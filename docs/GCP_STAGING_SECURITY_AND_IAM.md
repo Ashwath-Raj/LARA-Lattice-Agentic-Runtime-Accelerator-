@@ -63,9 +63,9 @@ LARA strictly disallows granting broad `Owner` or `Editor` roles to automated se
 ```
 ┌─────────────────────────┐               Private Subnet (VPC)               ┌─────────────────────────┐
 │   Cloud Run Container   │ ───────────────────────────────────────────────> │    Compute Engine VM    │
-│  (Untrusted Code Client)│   Encrypted Internal HTTP (Port 8081)           │     (goboxd Daemon)     │
-└─────────────────────────┘   Auth: Bearer ${GOBOXD_INTERNAL_AUTH_TOKEN}     └────────────┬────────────┘
-                                                                                          │
+│  (Untrusted Code Client)│  Unencrypted Internal HTTP (Port 8081)           │     (goboxd Daemon)     │
+└─────────────────────────┘  [VPC Link Encryption Only; No App-layer TLS]    └────────────┬────────────┘
+                             Auth: Bearer ${GOBOXD_INTERNAL_AUTH_TOKEN}                   │
                                                                                           ▼
                                                                              ┌─────────────────────────┐
                                                                              │     nsjail Sandbox      │
@@ -76,8 +76,10 @@ LARA strictly disallows granting broad `Owner` or `Editor` roles to automated se
                                                                              └─────────────────────────┘
 ```
 
-- **Separate Host:** The sandbox daemon runs on an independent Compute Engine VM, never inside the Cloud Run container.
-- **Kernel-Level Isolation:** nsjail uses Linux namespaces (PID, mount, network, IPC, UTS) and cgroup v2 to constrain CPU, memory, and process creation.
-- **Network Isolation:** Sandbox processes have no network access (`clone_newnet`), preventing data exfiltration, lateral VPC movement, or access to Cloud metadata endpoints (`169.254.169.254`).
+### 4.1 Transport & Networking Truth Audit
+- **No Application-Layer Encryption:** Transport between Cloud Run and goboxd VM is plain HTTP. While Google Cloud provides physical network link encryption between GCE data center hosts, this does NOT provide application-layer TLS. The bearer token travels as plaintext within the VPC network.
+- **Remaining TLS / mTLS Requirement:** Before sandbox activation in production, TLS termination (via Nginx or Caddy with an internal CA certificate on port 8443) must be configured on the GCE VM to protect the internal authorization token.
+- **VPC Egress Path:** Cloud Run requires an explicit Direct VPC Egress binding (`--network=... --subnet=... --vpc-egress=private-ranges-only`) or a Serverless VPC Access connector to reach private RFC1918 internal IPs.
+- **Firewall Restriction:** The GCE VM firewall must strictly restrict ingress to port 8081/8443 from the Cloud Run egress subnet only. Target tag: `goboxd-sandbox`.
 - **Zero Cloud Credentials:** The sandbox VM receives no GCP service account credentials or Firestore tokens.
-- **Kill-Switch:** When `GOBOXD_KILL_SWITCH=true`, all tool gateway calls to goboxd fail closed, return `SANDBOX_UNAVAILABLE`, and emit an audit event.
+- **Fail-Closed Kill-Switch:** `GOBOXD_KILL_SWITCH=true` is enforced in all production settings models. If the sandbox is unreachable or the kill-switch is active, all tool gateway execution calls fail closed with `SANDBOX_UNAVAILABLE` and emit an audit event. Untrusted code is NEVER executed in Cloud Run or locally.
