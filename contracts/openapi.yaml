@@ -1,0 +1,202 @@
+openapi: 3.1.0
+info:
+  title: LARA Runtime API
+  version: 1.0.0
+  description: Frozen prototype API contract. Server derives principal from secure session; client-supplied roles are ignored.
+servers:
+  - url: /api/v1
+security:
+  - DemoSession: []
+components:
+  securitySchemes:
+    DemoSession:
+      type: apiKey
+      in: cookie
+      name: lara_session
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code: {type: string}
+            message: {type: string}
+            request_id: {type: string}
+            trace_id: {type: [string, 'null']}
+    Principal:
+      type: object
+      required: [principal_id, display_name, roles, attributes]
+      properties:
+        principal_id: {type: string}
+        display_name: {type: string}
+        roles: {type: array, items: {type: string}}
+        attributes: {type: object, additionalProperties: true}
+    TaskCreate:
+      type: object
+      required: [prompt]
+      properties:
+        title: {type: string, maxLength: 120}
+        prompt: {type: string, minLength: 10, maxLength: 4000}
+        incident_id: {type: [string, 'null']}
+        attachment_ids: {type: array, items: {type: string}, maxItems: 5}
+    TaskAccepted:
+      type: object
+      required: [task_id, status, trace_id, created_at]
+      properties:
+        task_id: {type: string}
+        status: {type: string}
+        trace_id: {type: string}
+        created_at: {type: string, format: date-time}
+    PolicyRequest:
+      type: object
+      required: [action, resource_id, purpose]
+      properties:
+        action: {type: string}
+        resource_id: {type: string}
+        purpose: {type: string}
+    PolicyDecision:
+      type: object
+      required: [decision, reason_code, policy_id, evaluated_at]
+      properties:
+        decision: {type: string, enum: [ALLOW, DENY, REQUIRE_APPROVAL, REDACT]}
+        reason_code: {type: string}
+        policy_id: {type: string}
+        evaluated_at: {type: string, format: date-time}
+    ApprovalDecision:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: {type: string, enum: [APPROVE, REJECT]}
+        reason: {type: string, minLength: 8, maxLength: 500}
+paths:
+  /health/live:
+    get:
+      security: []
+      summary: Liveness probe
+      responses:
+        '200': {description: Alive}
+  /health/ready:
+    get:
+      security: []
+      summary: Readiness probe
+      responses:
+        '200': {description: Ready}
+        '503': {description: Not ready}
+  /auth/demo-login:
+    post:
+      security: []
+      summary: Authenticate a seeded demo identity
+      responses:
+        '200': {description: Authenticated; sets HttpOnly session cookie}
+        '401': {description: Invalid demo credentials}
+  /auth/me:
+    get:
+      summary: Resolve current server-side principal
+      responses:
+        '200': {description: Principal}
+        '401': {description: Authentication required}
+  /auth/logout:
+    post:
+      summary: Invalidate current session
+      responses:
+        '204': {description: Logged out}
+  /tasks:
+    post:
+      summary: Create task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TaskCreate'}
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TaskAccepted'}
+        '401': {description: Authentication required}
+        '403': {description: Policy denied}
+  /tasks/{task_id}:
+    get:
+      summary: Get task state and result
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Task}
+        '404': {description: Not found}
+  /tasks/{task_id}/events:
+    get:
+      summary: Get task events
+      parameters:
+        - {name: task_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Event list}
+  /graph/routes/resolve:
+    get:
+      summary: Resolve route for a task using current session principal
+      parameters:
+        - {name: task_id, in: query, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Route result}
+        '403': {description: Not permitted}
+  /policies/evaluate:
+    post:
+      summary: Evaluate action for current session principal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PolicyRequest'}
+      responses:
+        '200':
+          description: Policy decision
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PolicyDecision'}
+  /approvals/{approval_id}/decision:
+    post:
+      summary: Approve or reject a pending action
+      parameters:
+        - {name: approval_id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ApprovalDecision'}
+      responses:
+        '200': {description: Decision recorded}
+        '403': {description: Not authorised}
+        '409': {description: Invalid approval state or separation-of-duties violation}
+  /evolution/proposals:
+    get:
+      summary: List evolution proposals
+      responses:
+        '200': {description: Proposal list}
+    post:
+      summary: Create proposal from trace evidence
+      responses:
+        '201': {description: Proposal created}
+  /evolution/proposals/{proposal_id}/evaluate:
+    post:
+      summary: Evaluate candidate against fixed suite
+      parameters:
+        - {name: proposal_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Evaluation result}
+  /evolution/proposals/{proposal_id}/approve:
+    post:
+      summary: Promote candidate after admin approval and successful evaluation
+      parameters:
+        - {name: proposal_id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Promoted}
+        '403': {description: Not authorised}
+        '409': {description: Evaluation gate not passed}
+  /audit:
+    get:
+      summary: Query authorised audit events
+      responses:
+        '200': {description: Audit events}

@@ -1,0 +1,248 @@
+[
+  {
+    "node_id": "workflow:incident-investigation",
+    "tenant_id": "demo-enterprise",
+    "type": "workflow",
+    "name": "Incident Investigation",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "source:incident-log",
+    "tenant_id": "demo-enterprise",
+    "type": "source",
+    "name": "Incident Log",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "source:asset-registry",
+    "tenant_id": "demo-enterprise",
+    "type": "source",
+    "name": "Asset Registry",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "source:maintenance-history",
+    "tenant_id": "demo-enterprise",
+    "type": "source",
+    "name": "Maintenance History",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "source:sop-current",
+    "tenant_id": "demo-enterprise",
+    "type": "source",
+    "name": "Current SOP Repository",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "source:vendor-contract",
+    "tenant_id": "demo-enterprise",
+    "type": "source",
+    "name": "Restricted Vendor Contract",
+    "classification": "CONFIDENTIAL",
+    "allowed_roles": [
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "agent:research",
+    "tenant_id": "demo-enterprise",
+    "type": "agent",
+    "name": "Research Agent",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "agent:analysis",
+    "tenant_id": "demo-enterprise",
+    "type": "agent",
+    "name": "Analysis Agent",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "agent:verification",
+    "tenant_id": "demo-enterprise",
+    "type": "agent",
+    "name": "Verification Agent",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "skill:evidence-synthesis",
+    "tenant_id": "demo-enterprise",
+    "type": "skill",
+    "name": "Evidence Synthesis",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "skill:sop-revision-check",
+    "tenant_id": "demo-enterprise",
+    "type": "skill",
+    "name": "SOP Revision Check",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "tool:calculator-safe",
+    "tenant_id": "demo-enterprise",
+    "type": "tool",
+    "name": "Safe Calculator",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "operator",
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "tool:maintenance-request",
+    "tenant_id": "demo-enterprise",
+    "type": "tool",
+    "name": "Simulated Maintenance Request",
+    "classification": "INTERNAL",
+    "allowed_roles": [
+      "supervisor",
+      "runtime_admin"
+    ],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  },
+  {
+    "node_id": "tool:equipment-control",
+    "tenant_id": "demo-enterprise",
+    "type": "tool",
+    "name": "Equipment Control (Unsupported)",
+    "classification": "RESTRICTED",
+    "allowed_roles": [],
+    "purposes": [
+      "incident_investigation"
+    ],
+    "status": "ACTIVE",
+    "synthetic": true,
+    "trust_score": 0.95
+  }
+]
