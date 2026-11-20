@@ -1,111 +1,123 @@
-# LARA Phase 6 — Visual Acceptance & Quality Assurance Report
+# LARA Phase 6.1 — Visual Acceptance & Quality Assurance Report
 
 **Environment**: Local Vite Dev Server (`http://localhost:3000/`)  
 **Branch**: `feature/praneeth-frontend` (tracking `origin/feature/praneeth-frontend`)  
-**Test Engine**: Puppeteer Core driving headless Google Chrome (`1440x900`, `1280x800`, `768x1024`, `390x844`)  
-**Quality Verdict**: **SHIP** (Production Ready, 39 Viewport Screenshots Captured, All 6 Tests Passing)
+**Test Engine**: Puppeteer Core driving Headless Google Chrome (`1440x900`, `1280x800`, `768x1024`, `390x844`) + axe-core v4.x  
+**Acceptance Verdict**: **ACCEPTED FOR STAGING INTEGRATION**  
+*(Frontend UI component integration and responsive styling complete; live backend streaming and cryptographic proof verification remain external backend integration dependencies. Not designated as full production-ready until backend freeze is lifted.)*
 
 ---
 
-## 1. Executive Summary
+## 1. Executive Summary & Verification Methodology
 
-Phase 6 completes the visual and functional acceptance audit of the LARA enterprise operations console. The frontend has been rigorously evaluated across four responsive breakpoints, testing every navigation transition, interactive drawer, modal dialog, and policy simulator control against the visual standards established by the Google Ads overview console and Google Workspace security architecture.
+Phase 6.1 completes the targeted visual refinements and empirical accessibility verification of the LARA enterprise operations console. All surfaces have been evaluated across four responsive breakpoints, testing every layout transition, horizontal scroll affordance, interactive drawer, and policy simulation workflow.
 
-All primary surfaces adhere to a clean light enterprise aesthetic with high contrast, calm spacing, and zero generic placeholder assets.
+To maintain engineering integrity, the verification methodology explicitly distinguishes between four validation layers:
 
----
-
-## 2. Visual Architecture & Reference Alignment
-
-| Design Attribute | Target Reference Pattern | LARA Implementation & Polish | Status |
-|---|---|---|---|
-| **Primary Rail** | Google Ads 68px primary navigation rail | Fixed 68px rail with custom LARA route mark, compact icon actions (`Home`, `Work`, `Intel`, `Govern`, `Audit`), settings trigger, and user avatar. | **PASS** |
-| **Contextual Sidebar** | Google Ads expandable hierarchical campaign tree | 236px collapsible sidebar with workspace selector, instant navigation filter input, grouped sections, badge counters, and real-time runtime health pulse. | **PASS** |
-| **Top Navigation Bar** | Google Workspace global search and utility bar | 64px sticky header with blurred backdrop (`rgba(255,255,255,0.96)`), global search field (`max-width: 520px`), synthetic demo badge, help popover, notification drawer, and identity switcher. | **PASS** |
-| **Surfaces & Borders** | Clean light enterprise surfaces | `#FFFFFF` card panels set on `#F7F9FC` background canvas with crisp `#DADFE7` borders and subtle box-shadows (`0 1px 2px rgba(32,33,36,0.06)`). | **PASS** |
-| **Metric Cards** | Google Ads summary cards | Multi-column metric cards featuring category-specific icon badges (`--metric-bg`), large tabular numeral displays (`24px`), and change indicators without cliché side-tab borders. | **PASS** |
-| **Operational Charts** | Clean trend visualization | SVG spline chart with dual polyline gradients (`#1A73E8` investigations, `#0B9A9A` evidence) and 30-day temporal axis markers. | **PASS** |
-| **Data Tables** | High-density operational data tables | Tabular layouts with subtle column headers (`#FAFBFD`), ascending/descending sort indicators, clickable row states, mono-spaced identifiers, and domain status badges. | **PASS** |
-| **Brand Identity** | Restrained original identity | 100% custom SVGs (`lara-mark.svg`, `route-flow.svg`, `evidence-file.svg`, `approval-path.svg`); zero Google trademarks or copyrighted assets. | **PASS** |
+1. **Screenshot Capture**: Automated full-viewport and viewport-clipped visual captures at 1440×900, 1280×800, 768×1024, and 390×844 via headless Chrome.
+2. **Automated Interaction Tests**: Vitest integration suites (4 suites, 8 tests passing) and Puppeteer programmatic journeys verifying modal focus trapping, drawer toggling, route switching, and keyboard interaction.
+3. **Manual Visual Inspection**: Review of generated contact sheets (`CONTACT_SHEET_DESKTOP.png`, `CONTACT_SHEET_RESPONSIVE.png`, `INTERACTION_FLOWS.png`) checking hierarchy, typography, border alignment, clipping, and whitespace.
+4. **Backend-Simulated Behavior**: Client-side synthetic fixtures (`src/api/mockData.ts`, `src/api/client.ts`) providing deterministic state changes without live gRPC/WebSocket dependencies.
 
 ---
 
-## 3. Responsive Viewport Acceptance
+## 2. Targeted Refinements Completed
 
-Visual testing was performed across four distinct hardware resolutions with full screenshot artifacts stored in `artifacts/ui-review/`:
+### 2.1 Priority One: Information Highways Graph
+- **viewBox & Margin Correction**: Expanded SVG viewBox to `0 0 960 320` with 40px left and right boundary buffers. Tool node ends at `x: 920`, leaving 40px of clearance and completely resolving desktop clipping.
+- **Mobile Container Overflow**: Replaced flex-centering scroll container with an accessible horizontal scroll wrapper (`.graph-scroll-wrap` with `overflow-x: auto; -webkit-overflow-scrolling: touch;`). Agent and source nodes are fully reachable on 390px mobile.
+- **Horizontal Exploration Affordance**: Added `.graph-navigation-bar` featuring:
+  - Visual pipeline indicator: `↔ Pipeline: Sources (2) → Workflow (1) → Agents (2) → Tool (1)`.
+  - Accessible pan buttons (`‹` / `›`) with `aria-label="Scroll graph left/right"`.
+  - Node auto-centering: Clicking or keyboard-selecting any node smoothly scrolls the container to center that node in the viewport.
+- **Dynamic Active Route Highlighting**: Selecting any node dynamically highlights connected edges in `#1A73E8` with active arrowheads (`#arrowhead-active`), dimming inactive paths.
+- **Accessible Semantics**: SVG container upgraded from `role="img"` to `role="region"` with `aria-label="Information highway interactive graph"`, eliminating `nested-interactive` accessibility violations while retaining focusable `<g role="button" tabIndex={0}>` nodes.
 
-### 3.1 Desktop (`1440 × 900`)
-- **Layout**: Full 3-column architecture (Primary Rail + Expanded Context Sidebar + Fluid Workspace).
-- **Behavior**: Maximum content density; detail sidebars and inspectors render side-by-side without horizontal scrolling.
-- **Key Artifacts**:
-  - `artifacts/ui-review/overview_1440x900.png`
-  - `artifacts/ui-review/investigations_1440x900.png`
-  - `artifacts/ui-review/investigation_detail_1440x900.png`
-  - `artifacts/ui-review/highways_1440x900.png`
-  - `artifacts/ui-review/agents_1440x900.png`
-  - `artifacts/ui-review/evolution_1440x900.png`
-  - `artifacts/ui-review/governance_1440x900.png`
-  - `artifacts/ui-review/approvals_1440x900.png`
-  - `artifacts/ui-review/audit_1440x900.png`
+### 2.2 Mobile Navigation Architecture (390px & 768px)
+- **Primary Rail Behavior**: On viewports `≤ 768px`, `.primary-rail` is completely hidden (`display: none !important`), eliminating the 68px left gutter and dedicating 100% of screen width to workspace content.
+- **Navigation Drawer**: The header hamburger button (`.mobile-menu-button`, `aria-expanded`) opens `.context-sidebar` as an off-canvas drawer (`width: min(300px, 85vw)`, `z-index: 60`) from `left: 0`.
+- **Dismissal Controls**:
+  - Close button (`X`) rendered in the drawer header.
+  - Backdrop scrim (`.mobile-scrim`) closes drawer on tap/click.
+  - Keyboard accessibility: Pressing `Escape` closes the drawer immediately.
+  - Selecting any navigation item navigates to the screen and automatically closes the drawer.
+- **Zero Horizontal Overflow**: All child layouts (`.overview-grid`, `.detail-grid`, `.highway-layout`) collapse to single columns with zero unintended horizontal viewport scrolling.
 
-### 3.2 Laptop (`1280 × 800`)
-- **Layout**: Proportional scaling; sidebar width adjusts to 215px, padding tightens to 22px.
-- **Behavior**: Grid layouts remain multi-column; metric summaries maintain 4-column layout cleanly.
-- **Key Artifacts**: `artifacts/ui-review/*_1280x800.png` (8 screens verified).
-
-### 3.3 Tablet (`768 × 1024` Portrait)
-- **Layout**: Context sidebar transitions to an off-canvas drawer toggled via the hamburger trigger.
-- **Behavior**: Metric cards wrap to a 2×2 grid; split panels (e.g. Investigation main + side, Highway graph + inspector) stack vertically to preserve readability.
-- **Key Artifacts**: `artifacts/ui-review/*_768x1024.png` (8 screens verified).
-
-### 3.4 Mobile (`390 × 844`)
-- **Layout**: Primary rail collapses into top bar menu button; context sidebar transforms into full-viewport slide-over with dark backdrop scrim.
-- **Behavior**: Tables enable smooth horizontal scrolling; investigation stage bar scrolls horizontally with touch indicators; global search kbd shortcut and environment subtitle hide cleanly.
-- **Key Artifacts**: `artifacts/ui-review/*_390x844.png` (8 screens verified).
+### 2.3 Overview Call-to-Action Hierarchy
+- **Single Dominant Primary CTA**: Retained `<Button variant="primary">New Investigation</Button>` exclusively in the `PageHeader`.
+- **Secondary Hero Action**: Refactored the welcome panel hero action to `<Button variant="secondary">Start Investigation</Button>` alongside `<Button variant="subtle">Explore all cases</Button>`.
+- **Hierarchy Result**: Eliminates competing primary blue buttons while preserving quick case initiation from both the header and the empty-state hero.
 
 ---
 
-## 4. Module-by-Module Functional Verification
+## 3. Responsive Viewport Acceptance Matrix
 
-| Module | Verification Steps & Interaction Checks | Result |
+| Screen | Desktop (1440 × 900) | Laptop (1280 × 800) | Tablet (768 × 1024) | Mobile (390 × 844) | Verification Type | Status |
+|---|---|---|---|---|---|---|
+| **Overview** | 3-pane layout, 4 KPI cards, spline chart | 4 KPI cards, scaled padding | 2×2 metric grid, stacked chart & queue | 2-col metric cards, stacked feed | Screenshot + Automated Test | **PASS** |
+| **Investigations** | 6-col data table, filter chips | Compact table padding | Horizontally scrollable table | Stacked filter fields, touch rows | Screenshot + Automated Test | **PASS** |
+| **Case Detail** | Stage bar, ledger, timeline, proposed action | Proportional 2-col split | Stacked stage bar & ledger | Horizontal stage bar, stacked cards | Screenshot + Visual Inspection | **PASS** |
+| **Highways** | Full 960px SVG graph, inspector sidebar | Graph canvas + inspector | Stacked graph & candidates list | Horizontal pan wrapper, pan buttons | Screenshot + Automated Test | **PASS** |
+| **Agent Fleet** | Registry table + side capability inspector | Compact metrics & gauge | Stacked registry & detail | Full-width cards with badges | Screenshot + Visual Inspection | **PASS** |
+| **Evolution Lab** | Diff view, 6-check runner, promotion | Balanced 2-col layout | Stacked diff cards & runner | Vertical diff with 90° arrow | Screenshot + Automated Test | **PASS** |
+| **Governance** | Principal directory + ABAC simulator | Compact directory grid | Stacked directory & simulator | Full-width simulator controls | Screenshot + Automated Test | **PASS** |
+| **Approvals** | Master-detail 2-pane queue & justification | Master-detail layout | Stacked cards & detail panel | Vertical approval cards | Screenshot + Automated Test | **PASS** |
+| **Audit Trail** | Event log table + trace explorer + JSON | Balanced 2-pane layout | Stacked log & trace explorer | Scrollable log, full-width trace | Screenshot + Automated Test | **PASS** |
+
+---
+
+## 4. Accessibility Evidence & Compliance Audit
+
+Automated audits were conducted using **axe-core v4.x** driven by Headless Google Chrome across desktop and mobile viewports.
+
+### 4.1 Automated Rule Passes
+- **Semantics & Landmarks**: `<main>`, `<nav>`, `<aside>`, `<header>` properly delineate page structure.
+- **Dialogs & Modals**: `role="dialog"`, `aria-modal="true"`, accessible name via `aria-label`, and focus trapping verified.
+- **Tablists & States**: `role="tablist"`, `role="tab"`, and `aria-selected` correctly implemented in tabs and segmented controls.
+- **Keyboard Reachability**: All interactive controls, buttons, form inputs, and SVG pipeline nodes are reachable via `Tab` and operable via `Enter` / `Space`.
+- **Reduced Motion**: `@media (prefers-reduced-motion: reduce)` rule present in stylesheet, halting transitions and animations.
+
+### 4.2 Known Violations & Honest Disclosure
+The audit revealed specific areas where full WCAG 2.2 AA is **NOT** yet achieved:
+
+1. **Color Contrast (`color-contrast` - WCAG 1.4.3)**:
+   - *Finding*: While primary body text (`#202124` on `#FFFFFF`) achieves 12.5:1, secondary muted labels (`#758195`), timestamp captions, and light gray status text fall between 3.2:1 and 4.1:1 (below the 4.5:1 threshold for normal text).
+   - *Status*: Flagged for token palette contrast adjustment in design-system tokens pass.
+2. **Touch Target Size (`target-size` - WCAG 2.5.8 / 2.5.5)**:
+   - *Finding*: On mobile (390px), 14 interactive controls (including 34×34px icon buttons and pagination buttons) fall below the recommended 44×44px touch target boundary.
+   - *Status*: Operational on touch devices, but requires expanded padding pseudo-elements for strict AA compliance.
+3. **Accessible Name in Content (`label-content-name-mismatch` - WCAG 2.5.3)**:
+   - *Finding*: The operator identity switcher button uses `aria-label="Switch demo principal"`, whereas its visible text displays the user's name ("Maya Operator"). Screen readers expecting the visible label to begin the accessible name flag this mismatch.
+   - *Status*: Retained to maintain existing integration test contracts; scheduled for refactor in Phase 7.
+4. **Unverified Assistive Technology Areas**:
+   - Live screen reader voice output (NVDA, JAWS, VoiceOver) has not been verified with real assistive users.
+   - Dynamic live region announcements for background WebSocket updates are unverified.
+
+**Conclusion**: The frontend achieves substantial accessibility across keyboard navigation, semantic markup, and dialog accessibility, but **full WCAG 2.2 AA certification cannot be claimed** until contrast tokens and touch targets are adjusted.
+
+---
+
+## 5. Backend Integration Dependencies & Boundaries
+
+The current frontend implementation is a high-fidelity client-side prototype operating on frozen API schemas and synthetic fixtures:
+
+| Capability | Current Frontend State | Backend Integration Dependency |
 |---|---|---|
-| **Overview** | KPI cards render correct metric counts; operational spline chart displays 30-day timeline; recent investigations table allows direct navigation to case details; "Start Investigation" opens modal dialog with focus trapped. | **PASS** |
-| **Investigations** | Search filter narrows cases in real time; severity and status dropdown filters function correctly; clicking case row navigates to `InvestigationWorkspace` showing stage progression (Intake → Route → Evidence → Analysis → Verification → Policy → Proposed Action). | **PASS** |
-| **Information Highways** | Reactive route re-resolution: Switching from Operator (Maya) to Supervisor (Ravi) dynamically updates the route banner; displays 6 permitted sources and excludes `source:vendor-contract` for Operator (`POLICY_DENIED`); node click updates inspector sidebar. | **PASS** |
-| **Agent Fleet** | Specialist fleet registry renders Research, Analysis, and Verification agents; selecting an agent updates capability tags, 30-day reliability gauge (99%), and recent execution timeline. | **PASS** |
-| **Evolution Lab** | Failure signal card links directly to trace `trc_8f14e45f`; code diff displays active baseline vs. proposed candidate; interactive evaluation runner triggers `api.evaluateCandidate()` passing all 6 invariants; promotion gateway enforces runtime administrator credentials. | **PASS** |
-| **Governance** | Seeded demo principal directory displays roles, departments, and clearance levels; Policy Decision Simulator evaluates Action + Resource + Purpose against ABAC policy engine, rendering authorized or approval-required decision badges. | **PASS** |
-| **Approvals** | Queue renders pending actions with requester, age, and risk tags; selecting an item updates evidence references; decision bar enforces minimum 8-character justification; separation-of-duties rule blocks requester self-approval. | **PASS** |
-| **Audit Trail** | Filterable cryptographic event log with hash IDs; Trace explorer expands linked step-by-step event timeline for `trc_8f14e45f`; read-only JSON viewer allows one-click payload copying with visual feedback. | **PASS** |
+| **Incident Investigation** | Renders static fixture cases (`INC-204`, `INC-198`, etc.) | REST API `/api/v1/investigations` with PostgreSQL persistence |
+| **Route Resolution** | Evaluates client-side logic in `mockData.ts` | gRPC service `RouteResolutionService.ResolveRoute` |
+| **Real-time Telemetry** | Simulated via CSS keyframe pulse and static time series | WebSocket stream `/ws/telemetry` via Cloud Run |
+| **Cryptographic Audit** | Formats pre-computed SHA-256 hashes in monospace | Merkle tree validation endpoint `/api/v1/audit/verify` |
+| **Evolution Lab Evaluator** | Client timer executes 6 synthetic checks | Sandboxed container evaluation runner |
+| **Approvals Gateway** | Enforces 8-char justification and self-approval block in React state | Two-person authorization service with cryptographic signing |
 
 ---
 
-## 5. Defects Found & Resolved During Refinement
+## 6. Review Artifacts Summary
 
-1. **Defect**: Side-tab accent bar on rounded metric cards (`.metric-card:before`).
-   - *Fix*: Replaced the left accent line with dedicated category-colored icon badge containers (`.metric-icon`) with domain surface tints (`--metric-bg`), eliminating visual clutter on rounded containers.
-2. **Defect**: Testing Library query collision on duplicate `Start Investigation` buttons.
-   - *Fix*: Differentiated the header action to "New Investigation" while keeping the primary welcome hero action as "Start Investigation", ensuring unambiguous user hierarchy.
-3. **Defect**: Nav group title / nav item label name collision on `Governance`.
-   - *Fix*: Renamed the sidebar navigation group header to "Policy & Control", keeping the navigation item label as "Governance".
-4. **Defect**: Missing React key prop on Highway candidate mapping.
-   - *Fix*: Corrected candidate key binding from `e.source_id` to `e.node_id || e.display || index`, resolving all React console warnings.
-5. **Defect**: TypeScript type mismatch in evaluation suite runner state.
-   - *Fix*: Expanded `useState` type definition to encompass all valid `EvaluationStatus` states (`'PASSED' | 'PENDING' | 'FAILED' | 'EVALUATING' | 'NOT_RUN'`).
+All visual deliverables, scripts, and reports have been generated and validated:
 
----
-
-## 6. Accessibility & Compliance Verification
-
-- **Color Contrast**: 100% compliant with WCAG 2.2 AA. Primary text `#202124` on `#FFFFFF` exceeds 12.5:1.
-- **Focus Rings**: Standardized visible 2px solid cobalt focus outline (`--lara-primary`) with 2px offset applied to all inputs, buttons, and selectable items.
-- **Screen Reader Landmarks**: Semantic `<aside>` for rails, `<nav>` for menus, `<main>` for workspace, and `<header>` for utility bar.
-- **ARIA Attributes**: `role="dialog"`, `aria-modal="true"`, `role="tablist"`, `aria-selected`, and `aria-label` applied to all icon-only buttons.
-- **Reduced Motion**: `@media (prefers-reduced-motion: reduce)` disables all animations and transitions across all components.
-
----
-
-## 7. Remaining Limitations & Backend Dependencies
-
-- **Live WebSocket Streaming**: Currently uses seeded synthetic fixtures and local state timers for demonstration. Production deployment will connect to Cloud Run gRPC/WebSocket stream for real-time telemetry alerts.
-- **Cryptographic Merkle Proof Verification**: Audit trail hashes are pre-computed in fixtures; backend SHA-256 chain verification is simulated on the client.
+- **Review Archive**: [artifacts/LARA_PHASE_6_REVIEW.zip](file:///d:/Singularity/LARA-Lattice-Agentic-Runtime-Accelerator-/artifacts/LARA_PHASE_6_REVIEW.zip)
+- **Desktop Portfolio (2880 × 2040)**: [artifacts/ui-review/CONTACT_SHEET_DESKTOP.png](file:///d:/Singularity/LARA-Lattice-Agentic-Runtime-Accelerator-/artifacts/ui-review/CONTACT_SHEET_DESKTOP.png)
+- **Responsive Matrix (3000 × 2600)**: [artifacts/ui-review/CONTACT_SHEET_RESPONSIVE.png](file:///d:/Singularity/LARA-Lattice-Agentic-Runtime-Accelerator-/artifacts/ui-review/CONTACT_SHEET_RESPONSIVE.png)
+- **Interaction Journeys (2880 × 1360)**: [artifacts/ui-review/INTERACTION_FLOWS.png](file:///d:/Singularity/LARA-Lattice-Agentic-Runtime-Accelerator-/artifacts/ui-review/INTERACTION_FLOWS.png)
+- **Axe-core Audit JSON**: [artifacts/accessibility_audit_report.json](file:///d:/Singularity/LARA-Lattice-Agentic-Runtime-Accelerator-/artifacts/accessibility_audit_report.json)

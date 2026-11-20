@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import laraMark from '../../assets/logos/lara-mark.svg';
 import laraWordmark from '../../assets/logos/lara-wordmark.svg';
 import {
@@ -39,6 +39,19 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
 
   const { principal, allPrincipals, switchIdentity } = useAuth();
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenu(false);
+        setUserMenu(false);
+        setNotifications(false);
+        setHelp(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const filtered = nav.map(g => ({ ...g, items: g.items.filter(i => i.label.toLowerCase().includes(search.toLowerCase())) })).filter(g => g.items.length);
   const go = (id: PageId) => { onNavigate(id); setMobileMenu(false); };
 
@@ -69,7 +82,10 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
       <aside className={`context-sidebar ${mobileMenu ? 'mobile-visible' : ''}`}>
         <div className="sidebar-head">
           <img src={laraWordmark} alt="LARA Agentic Runtime" />
-          <IconButton label="Collapse navigation" onClick={() => setSidebarOpen(false)}><Menu size={17} /></IconButton>
+          <div className="sidebar-head-actions">
+            <IconButton label="Close navigation drawer" className="mobile-close-btn" onClick={() => setMobileMenu(false)}><X size={18} /></IconButton>
+            <IconButton label="Collapse navigation" className="desktop-collapse-btn" onClick={() => setSidebarOpen(false)}><Menu size={17} /></IconButton>
+          </div>
         </div>
         <div className="workspace-select">
           <div className="workspace-mark">N</div>
@@ -105,7 +121,7 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
       <main className="main-area">
         <header className="workspace-header">
           {!sidebarOpen && <IconButton label="Expand navigation" onClick={() => setSidebarOpen(true)}><Menu size={18} /></IconButton>}
-          <button className="mobile-menu-button" aria-label="Open navigation" onClick={() => setMobileMenu(v => !v)}><Menu size={19} /></button>
+          <button className="mobile-menu-button" aria-label={mobileMenu ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileMenu} onClick={() => setMobileMenu(v => !v)}><Menu size={19} /></button>
           <div className="global-search">
             <Search size={17} />
             <input

@@ -5,8 +5,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'subtle' | 'danger' | 'suc
 export function Button({ children, variant = 'secondary', size = 'md', onClick, disabled, type = 'button', className = '' }: React.PropsWithChildren<{ variant?: ButtonVariant; size?: 'sm'|'md'|'lg'; onClick?: () => void; disabled?: boolean; type?: 'button'|'submit'; className?: string }>) {
   return <button type={type} className={`btn btn-${variant} btn-${size} ${className}`} onClick={onClick} disabled={disabled}>{children}</button>;
 }
-export function IconButton({ label, children, onClick, active = false }: React.PropsWithChildren<{ label: string; onClick?: () => void; active?: boolean }>) {
-  return <button type="button" className={`icon-button ${active ? 'is-active' : ''}`} aria-label={label} title={label} onClick={onClick}>{children}</button>;
+export function IconButton({ label, children, onClick, active = false, className = '' }: React.PropsWithChildren<{ label: string; onClick?: () => void; active?: boolean; className?: string }>) {
+  return <button type="button" className={`icon-button ${active ? 'is-active' : ''} ${className}`} aria-label={label} title={label} onClick={onClick}>{children}</button>;
 }
 export function Badge({ children, tone = 'neutral', dot = false }: React.PropsWithChildren<{ tone?: 'neutral'|'blue'|'green'|'amber'|'red'|'purple'|'teal'; dot?: boolean }>) {
   return <span className={`badge badge-${tone}`}>{dot && <i/>}{children}</span>;

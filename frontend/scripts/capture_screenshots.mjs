@@ -58,7 +58,7 @@ async function run() {
       for (const screen of SCREENS) {
         try {
           if (screen.id !== 'overview') {
-            if (vp.width <= 760) {
+            if (vp.width <= 768) {
               const menuBtn = await page.$('.mobile-menu-button');
               if (menuBtn) {
                 await menuBtn.click();

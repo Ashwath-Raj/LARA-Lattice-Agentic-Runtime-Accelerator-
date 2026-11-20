@@ -56,7 +56,7 @@ export function OverviewWelcomePanel({ onStart, onNavigate }: { onStart: () => v
         <h2>Enterprise Incident Workbench</h2>
         <p>Investigate incidents with linked evidence, specialist analysis and controlled operational handoffs — all in one workspace.</p>
         <div className="welcome-actions">
-          <Button variant="secondary" onClick={onStart}><Plus size={16} /> Quick investigation</Button>
+          <Button variant="secondary" onClick={onStart}><Plus size={16} /> Start Investigation</Button>
           <Button variant="subtle" onClick={() => onNavigate?.('investigations')}>Explore all cases <ArrowRight size={15} /></Button>
         </div>
         <div className="welcome-meta">
@@ -186,7 +186,7 @@ export function OverviewPage({ onNavigate, onStart, onSelectInvestigation }: { o
         subtitle="Enterprise Incident Workbench · A live workspace for incident investigation and operational decisions."
         actions={<Button variant="primary" onClick={onStart}><Plus size={16} /> New Investigation</Button>}
       />
-      <OverviewWelcomePanel onStart={onStart} />
+      <OverviewWelcomePanel onStart={onStart} onNavigate={onNavigate} />
       <SystemHealthStrip />
       <KpiSummaryRow />
       <div className="overview-grid">
@@ -417,8 +417,9 @@ export function InvestigationWorkspace({ id, onBack, onApprove }: { id: string; 
 export function HighwaysPage() {
   const { principal } = useAuth();
   const [view, setView] = useState('Graph');
-  const [selected, setSelected] = useState('Vibration telemetry');
+  const [selected, setSelected] = useState('Telemetry stream');
   const [routeResult, setRouteResult] = useState<RouteResult | null>(null);
+  const graphScrollRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -429,13 +430,43 @@ export function HighwaysPage() {
   }, [principal]);
 
   const nodes = [
-    { x: 70, y: 80, label: 'Telemetry stream', kind: 'Source', sub: 'TEL-P204-0918' },
-    { x: 70, y: 230, label: 'Maintenance SOP', kind: 'Source', sub: 'SOP-MNT-014' },
-    { x: 285, y: 151, label: 'Incident workflow', kind: 'Workflow', sub: 'INC-204 investigation' },
-    { x: 510, y: 80, label: 'Research Agent', kind: 'Agent', sub: 'Evidence retrieval' },
-    { x: 510, y: 230, label: 'Verification Agent', kind: 'Agent', sub: 'Claim validation' },
-    { x: 735, y: 151, label: 'Maintenance connector', kind: 'Tool', sub: 'Action: approval gated' }
+    { x: 35, y: 85, label: 'Telemetry stream', kind: 'Source', sub: 'TEL-P204-0918', w: 152 },
+    { x: 35, y: 225, label: 'Maintenance SOP', kind: 'Source', sub: 'SOP-MNT-014', w: 152 },
+    { x: 275, y: 155, label: 'Incident workflow', kind: 'Workflow', sub: 'INC-204 investigation', w: 154 },
+    { x: 515, y: 85, label: 'Research Agent', kind: 'Agent', sub: 'Evidence retrieval', w: 152 },
+    { x: 515, y: 225, label: 'Verification Agent', kind: 'Agent', sub: 'Claim validation', w: 152 },
+    { x: 755, y: 155, label: 'Maintenance connector', kind: 'Tool', sub: 'Action: approval gated', w: 165 }
   ];
+
+  const scrollGraph = (dir: 'left' | 'right') => {
+    if (graphScrollRef.current) {
+      if (typeof graphScrollRef.current.scrollBy === 'function') {
+        graphScrollRef.current.scrollBy({ left: dir === 'left' ? -260 : 260, behavior: 'smooth' });
+      } else {
+        graphScrollRef.current.scrollLeft += dir === 'left' ? -260 : 260;
+      }
+    }
+  };
+
+  const handleSelectNode = (label: string, nodeX: number, nodeWidth: number) => {
+    setSelected(label);
+    if (graphScrollRef.current) {
+      const container = graphScrollRef.current;
+      const targetScroll = nodeX + (nodeWidth / 2) - (container.clientWidth / 2);
+      if (typeof container.scrollTo === 'function') {
+        container.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
+      } else {
+        container.scrollLeft = Math.max(0, targetScroll);
+      }
+    }
+  };
+
+  const isEdgeActive = (fromLabel: string, toLabel: string) => {
+    if (!selected) return true;
+    if (selected === fromLabel || selected === toLabel) return true;
+    if (selected === 'Incident workflow') return true;
+    return false;
+  };
 
   const principalDisplay = principal?.display_name || 'Maya Operator';
   const roleDisplay = principal?.roles?.[0] ? (principal.roles[0].charAt(0).toUpperCase() + principal.roles[0].slice(1)) : 'Operator';
@@ -466,31 +497,102 @@ export function HighwaysPage() {
       </div>
       <div className="highway-layout">
         <Panel title="Resolved information route" subtitle="Permission-aware source-to-action path">
+          <div className="graph-navigation-bar">
+            <div className="graph-hint">
+              <span className="graph-hint-icon">↔</span>
+              <span>Pipeline: <strong>Sources (2)</strong> → <strong>Workflow (1)</strong> → <strong>Agents (2)</strong> → <strong>Tool (1)</strong></span>
+            </div>
+            <div className="graph-nav-buttons">
+              <button type="button" className="graph-nav-btn" onClick={() => scrollGraph('left')} aria-label="Scroll graph left" title="Scroll left">‹</button>
+              <span className="graph-scroll-indicator">Pan</span>
+              <button type="button" className="graph-nav-btn" onClick={() => scrollGraph('right')} aria-label="Scroll graph right" title="Scroll right">›</button>
+            </div>
+          </div>
           <div className="graph-canvas">
             {view === 'Graph' ? (
-              <svg viewBox="0 0 840 330" role="img" aria-label="Information highway graph from sources through workflow to agents and tool">
-                <defs>
-                  <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0 0 L6 3 L0 6" fill="#7FA9E4" />
-                  </marker>
-                </defs>
-                <g stroke="#9CB9E4" strokeWidth="2.4" fill="none" markerEnd="url(#arrowhead)">
-                  <path d="M165 104 C220 104 218 154 254 154" />
-                  <path d="M165 254 C220 254 218 174 254 174" />
-                  <path d="M410 164 C460 164 460 104 493 104" />
-                  <path d="M410 164 C460 164 460 254 493 254" />
-                  <path d="M650 104 C700 104 700 164 710 164" />
-                  <path d="M650 254 C700 254 700 164 710 164" strokeDasharray="6 5" />
-                </g>
-                {nodes.map(n => (
-                  <g key={n.label} onClick={() => setSelected(n.label)} className="graph-node" style={{ cursor: 'pointer' }}>
-                    <rect x={n.x} y={n.y - 27} width="142" height="55" rx="9" fill={selected === n.label ? '#EAF2FE' : '#fff'} stroke={selected === n.label ? '#1A73E8' : '#CDD7E4'} strokeWidth={selected === n.label ? 2 : 1} />
-                    <circle cx={n.x + 14} cy={n.y - 9} r="4" fill={n.kind === 'Source' ? '#0B9A9A' : n.kind === 'Workflow' ? '#1A73E8' : n.kind === 'Agent' ? '#7B61C7' : '#188038'} />
-                    <text x={n.x + 25} y={n.y - 6} fontSize="10" fill="#758195">{n.kind.toUpperCase()}</text>
-                    <text x={n.x + 12} y={n.y + 10} fontSize="11" fill="#202124" fontWeight="600">{n.label}</text>
+              <div className="graph-scroll-wrap" ref={graphScrollRef}>
+                <svg viewBox="0 0 960 320" role="region" aria-label="Information highway interactive graph">
+                  <defs>
+                    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+                      <path d="M0 0 L6 3 L0 6" fill="#7FA9E4" />
+                    </marker>
+                    <marker id="arrowhead-active" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto">
+                      <path d="M0 0 L6 3 L0 6" fill="#1A73E8" />
+                    </marker>
+                  </defs>
+                  <g fill="none">
+                    <path
+                      d="M 187 85 C 225 85, 230 155, 269 155"
+                      stroke={isEdgeActive('Telemetry stream', 'Incident workflow') ? '#1A73E8' : '#9CB9E4'}
+                      strokeWidth={isEdgeActive('Telemetry stream', 'Incident workflow') ? 3 : 2}
+                      markerEnd={isEdgeActive('Telemetry stream', 'Incident workflow') ? 'url(#arrowhead-active)' : 'url(#arrowhead)'}
+                    />
+                    <path
+                      d="M 187 225 C 225 225, 230 155, 269 155"
+                      stroke={isEdgeActive('Maintenance SOP', 'Incident workflow') ? '#1A73E8' : '#9CB9E4'}
+                      strokeWidth={isEdgeActive('Maintenance SOP', 'Incident workflow') ? 3 : 2}
+                      markerEnd={isEdgeActive('Maintenance SOP', 'Incident workflow') ? 'url(#arrowhead-active)' : 'url(#arrowhead)'}
+                    />
+                    <path
+                      d="M 429 155 C 470 155, 475 85, 509 85"
+                      stroke={isEdgeActive('Incident workflow', 'Research Agent') ? '#1A73E8' : '#9CB9E4'}
+                      strokeWidth={isEdgeActive('Incident workflow', 'Research Agent') ? 3 : 2}
+                      markerEnd={isEdgeActive('Incident workflow', 'Research Agent') ? 'url(#arrowhead-active)' : 'url(#arrowhead)'}
+                    />
+                    <path
+                      d="M 429 155 C 470 155, 475 225, 509 225"
+                      stroke={isEdgeActive('Incident workflow', 'Verification Agent') ? '#1A73E8' : '#9CB9E4'}
+                      strokeWidth={isEdgeActive('Incident workflow', 'Verification Agent') ? 3 : 2}
+                      markerEnd={isEdgeActive('Incident workflow', 'Verification Agent') ? 'url(#arrowhead-active)' : 'url(#arrowhead)'}
+                    />
+                    <path
+                      d="M 667 85 C 705 85, 715 155, 749 155"
+                      stroke={isEdgeActive('Research Agent', 'Maintenance connector') ? '#1A73E8' : '#9CB9E4'}
+                      strokeWidth={isEdgeActive('Research Agent', 'Maintenance connector') ? 3 : 2}
+                      markerEnd={isEdgeActive('Research Agent', 'Maintenance connector') ? 'url(#arrowhead-active)' : 'url(#arrowhead)'}
+                    />
+                    <path
+                      d="M 667 225 C 705 225, 715 155, 749 155"
+                      strokeDasharray="6 5"
+                      stroke={isEdgeActive('Verification Agent', 'Maintenance connector') ? '#1A73E8' : '#9CB9E4'}
+                      strokeWidth={isEdgeActive('Verification Agent', 'Maintenance connector') ? 3 : 2}
+                      markerEnd={isEdgeActive('Verification Agent', 'Maintenance connector') ? 'url(#arrowhead-active)' : 'url(#arrowhead)'}
+                    />
                   </g>
-                ))}
-              </svg>
+                  {nodes.map(n => (
+                    <g
+                      key={n.label}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${n.label} - ${n.kind} (${n.sub})`}
+                      aria-pressed={selected === n.label}
+                      onClick={() => handleSelectNode(n.label, n.x, n.w)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectNode(n.label, n.x, n.w);
+                        }
+                      }}
+                      className={`graph-node ${selected === n.label ? 'is-selected' : ''}`}
+                      style={{ cursor: 'pointer', outline: 'none' }}
+                    >
+                      <rect
+                        x={n.x}
+                        y={n.y - 28}
+                        width={n.w}
+                        height="56"
+                        rx="9"
+                        fill={selected === n.label ? '#EAF2FE' : '#fff'}
+                        stroke={selected === n.label ? '#1A73E8' : '#CDD7E4'}
+                        strokeWidth={selected === n.label ? 2.2 : 1}
+                      />
+                      <circle cx={n.x + 14} cy={n.y - 9} r="4" fill={n.kind === 'Source' ? '#0B9A9A' : n.kind === 'Workflow' ? '#1A73E8' : n.kind === 'Agent' ? '#7B61C7' : '#188038'} />
+                      <text x={n.x + 25} y={n.y - 6} fontSize="10" fill="#758195" fontWeight="600">{n.kind.toUpperCase()}</text>
+                      <text x={n.x + 12} y={n.y + 11} fontSize="11" fill="#202124" fontWeight="600">{n.label}</text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
             ) : (
               <DataTable rows={nodes} rowKey="label" columns={[{ key: 'label', label: 'Node' }, { key: 'kind', label: 'Type' }, { key: 'sub', label: 'Reference' }]} />
             )}
@@ -500,7 +602,7 @@ export function HighwaysPage() {
             <span><i className="legend-workflow" /> Workflow</span>
             <span><i className="legend-agent" /> Agent</span>
             <span><i className="legend-tool" /> Tool</span>
-            <span className="legend-note">Select a node to inspect its route context.</span>
+            <span className="legend-note">Select a node or use ‹ / › to explore pipeline stages.</span>
           </div>
         </Panel>
         <div className="highway-inspector">
