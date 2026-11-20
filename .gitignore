@@ -1,4 +1,14 @@
-# Local AI agent configuration and tooling
+# Local AI agent configuration
 /.agents/
-# Local AI agent configuration and tooling
-/.agents/
+
+# Local UI skill repositories
+/tools/ui-skills/
+
+# Generated UI audit artifacts
+/shots/
+/.taste-skill/
+
+# Local environment
+.env
+.env.*
+!.env.example
