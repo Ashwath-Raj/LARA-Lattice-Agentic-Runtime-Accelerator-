@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<title id="title">LARA adaptive runtime visual</title><desc id="desc">Playful geometric forms and connected pathways representing agents, information and governed execution.</desc>
+<rect width="1200" height="620" rx="34" fill="#F5FFE8"/>
+<rect x="105" y="102" width="315" height="360" rx="8" fill="#E4FF88" opacity=".82"/>
+<rect x="46" y="138" width="210" height="205" rx="22" fill="#23C978"/>
+<circle cx="61" cy="153" r="16" fill="#8B4DFA"/><circle cx="241" cy="153" r="16" fill="#8B4DFA"/>
+<circle cx="61" cy="328" r="16" fill="#8B4DFA"/><circle cx="241" cy="328" r="16" fill="#8B4DFA"/>
+<path d="M310 132C420 44 566 104 585 218C604 330 534 429 421 432C322 435 262 359 265 260C267 207 279 161 310 132Z" fill="#4B43F5"/>
+<path d="M392 315V255C392 212 422 181 461 181C500 181 529 212 529 255V430" fill="none" stroke="#E4FF88" stroke-width="16" stroke-linecap="round"/>
+<g transform="translate(536 98)"><circle cx="62" cy="27" r="36" fill="#C7B9FF"/><circle cx="111" cy="76" r="36" fill="#C7B9FF"/><circle cx="62" cy="125" r="36" fill="#C7B9FF"/><circle cx="13" cy="76" r="36" fill="#C7B9FF"/><circle cx="62" cy="76" r="20" fill="#F5FFE8"/></g>
+<path d="M752 89H1128" stroke="#EC00D4" stroke-width="60" stroke-linecap="round" fill="none"/>
+<path d="M752 146H1128" stroke="#FF7138" stroke-width="58" stroke-linecap="round" fill="none"/>
+<path d="M752 204H1128" stroke="#EC00D4" stroke-width="58" stroke-linecap="round" fill="none"/>
+<path d="M752 262H1128" stroke="#FF7138" stroke-width="58" stroke-linecap="round" fill="none"/>
+<path d="M752 320H1128" stroke="#EC00D4" stroke-width="58" stroke-linecap="round" fill="none"/>
+<rect x="585" y="262" width="290" height="135" rx="4" fill="#00B9E8"/>
+<path d="M613 329H816M760 278L817 329L760 381" fill="none" stroke="#101014" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter"/>
+<rect x="394" y="364" width="188" height="188" rx="22" fill="#101014"/>
+<path d="M488 382C511 382 519 405 536 411C554 418 567 432 559 450C574 467 565 490 547 498C548 522 527 538 506 528C490 547 466 540 457 521C435 527 416 512 420 490C400 477 403 453 421 439C412 418 430 399 451 404C460 385 472 382 488 382Z" fill="#8B4DFA"/>
+<circle cx="488" cy="457" r="23" fill="#101014"/>
+<g fill="#101014" opacity=".14"><circle cx="958" cy="487" r="7"/><circle cx="993" cy="487" r="7"/><circle cx="1028" cy="487" r="7"/><circle cx="1063" cy="487" r="7"/><circle cx="1098" cy="487" r="7"/></g>
+</svg>

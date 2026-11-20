@@ -1,0 +1,86 @@
+{
+  "name": "LARA Bright Lattice",
+  "version": "1.0.0",
+  "colors": {
+    "canvas": {
+      "value": "#F5FFE8",
+      "role": "Primary canvas / calm neutral stage"
+    },
+    "ink": {
+      "value": "#101014",
+      "role": "Primary text, high-contrast boundaries and secure states"
+    },
+    "blue": {
+      "value": "#4B43F5",
+      "role": "Core runtime, orchestration and primary actions"
+    },
+    "cyan": {
+      "value": "#00B9E8",
+      "role": "Information movement, routing and connectors"
+    },
+    "magenta": {
+      "value": "#EC00D4",
+      "role": "Authority boundary, policy attention and protected route"
+    },
+    "orange": {
+      "value": "#FF7138",
+      "role": "Execution, action and review-needed state"
+    },
+    "green": {
+      "value": "#23C978",
+      "role": "Allowed, healthy and verified outcomes"
+    },
+    "lilac": {
+      "value": "#C7B9FF",
+      "role": "Agent and knowledge components"
+    },
+    "violet": {
+      "value": "#8B4DFA",
+      "role": "Evolution, adaptation and candidate changes"
+    },
+    "lime": {
+      "value": "#E4FF88",
+      "role": "Active context and focus surfaces; not body text"
+    },
+    "white": {
+      "value": "#FFFFFF",
+      "role": "Content surfaces"
+    },
+    "muted": {
+      "value": "#66666F",
+      "role": "Secondary text"
+    }
+  },
+  "radii": {
+    "sm": "12px",
+    "md": "20px",
+    "lg": "28px",
+    "pill": "999px"
+  },
+  "spacing": {
+    "1": "4px",
+    "2": "8px",
+    "3": "12px",
+    "4": "16px",
+    "6": "24px",
+    "8": "32px",
+    "12": "48px",
+    "16": "64px"
+  },
+  "typography": {
+    "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+    "display": "Bold / extra-bold, compact headlines",
+    "body": "Regular, highly readable",
+    "mono": "ui-monospace, SFMono-Regular, Consolas, monospace"
+  },
+  "semanticRules": {
+    "allow": "green",
+    "deny": "ink",
+    "review": "orange",
+    "evolution": "violet",
+    "routing": "cyan",
+    "authority": "magenta",
+    "agentKnowledge": "lilac",
+    "runtime": "blue"
+  }
+}
