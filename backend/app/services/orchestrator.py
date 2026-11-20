@@ -70,10 +70,31 @@ class OrchestratorService:
             return
 
         trace_id = task["trace_id"]
-        # Step 1: Routing
+
+        # Step 1: Planning
+        self._update_task_status(task_id, TaskStatusEnum.PLANNING.value, trace_id, principal.principal_id)
+        plan = {
+            "objective": f"Investigate {task.get('incident_id') or 'operational issue'}: {task['prompt'][:80]}",
+            "required_capabilities": ["incident_research", "asset_context", "procedure_check", "verification"],
+            "subtasks": [
+                {"id": "st-1", "agent_id": "agent:research", "purpose": "Collect permitted incident, asset, and SOP evidence", "depends_on": []},
+                {"id": "st-2", "agent_id": "agent:analysis", "purpose": "Analyze evidence, identify root causes, and draft recommendations", "depends_on": ["st-1"]},
+                {"id": "st-3", "agent_id": "agent:verification", "purpose": "Validate claims against permitted evidence and verify SOP effective dates", "depends_on": ["st-2"]}
+            ],
+            "proposed_actions": ["maintenance_request.create_simulated"]
+        }
+        self.audit.record_event(
+            event_type="TASK_PLANNED",
+            principal_id=principal.principal_id,
+            task_id=task_id,
+            trace_id=trace_id,
+            details=plan
+        )
+
+        # Step 2: Information Highways Routing
         self._update_task_status(task_id, TaskStatusEnum.ROUTING.value, trace_id, principal.principal_id)
         route_info = self.highways.resolve_routes(principal, task_id)
-        
+
         self.audit.record_event(
             event_type="HIGHWAY_ROUTE_RESOLVED",
             principal_id=principal.principal_id,
@@ -86,15 +107,62 @@ class OrchestratorService:
             }
         )
 
-        # Step 2: Delegating to Specialist Agents
+        # Step 3: Information Retrieval via Information Highways
+        retrieval_result = self.highways.retrieve_evidence(
+            query=task["prompt"],
+            principal=principal,
+            task_id=task_id
+        )
+
+        # Step 4: Delegating to Specialist Agents with Scoped Permission-Filtered Evidence
         self._update_task_status(task_id, TaskStatusEnum.DELEGATING.value, trace_id, principal.principal_id)
-        
-        # In a real environment, this invokes the Research, Analysis, and Verification agents sequentially
+
+        permitted_sources = route_info.get("permitted_sources", [])
+        evidence_items = [ev.model_dump() for ev in retrieval_result.evidence]
+
+        # Context packaging
+        evidence_summaries = []
+        for ev in retrieval_result.evidence:
+            evidence_summaries.append(f"[{ev.source_id} | Rev {ev.source_revision}]: {ev.content}")
+
+        scoped_prompt = f"Task: {task['prompt']}\nPermitted Context:\n" + "\n".join(evidence_summaries)
+
+        from backend.app.domain.models import ResearchAgentOutput, AnalysisAgentOutput, VerificationAgentOutput
+
         async def run_agents():
-            research_res = await self.model.generate_structured("Research Agent v1", task["prompt"])
-            analysis_res = await self.model.generate_structured("Analysis Agent v1", f"Evidence: {research_res}")
-            verification_res = await self.model.generate_structured("Verification Agent v1", f"Findings: {analysis_res}")
-            return research_res, analysis_res, verification_res
+            # 1. Research Agent
+            raw_research = await self.model.generate_structured("Research Agent v1", scoped_prompt)
+            # Filter evidence references to only include permitted sources
+            valid_evidence = []
+            for ev in raw_research.get("evidence", []):
+                if ev.get("source_id") in permitted_sources:
+                    valid_evidence.append(ev)
+            # Ensure retrieved items are included in research evidence if empty
+            if not valid_evidence and retrieval_result.evidence:
+                for ev in retrieval_result.evidence[:3]:
+                    valid_evidence.append({
+                        "source_id": ev.source_id,
+                        "claim": ev.content,
+                        "confidence": ev.confidence
+                    })
+            raw_research["evidence"] = valid_evidence
+            validated_research = ResearchAgentOutput(**raw_research)
+
+            # 2. Analysis Agent
+            analysis_input = f"Task: {task['prompt']}\nValidated Evidence: {validated_research.model_dump()}"
+            raw_analysis = await self.model.generate_structured("Analysis Agent v1", analysis_input)
+            validated_analysis = AnalysisAgentOutput(**raw_analysis)
+
+            # 3. Verification Agent
+            verification_input = (
+                f"Task: {task['prompt']}\n"
+                f"Evidence: {validated_research.model_dump()}\n"
+                f"Analysis: {validated_analysis.model_dump()}"
+            )
+            raw_verification = await self.model.generate_structured("Verification Agent v1", verification_input)
+            validated_verification = VerificationAgentOutput(**raw_verification)
+
+            return validated_research.model_dump(), validated_analysis.model_dump(), validated_verification.model_dump()
 
         try:
             loop = asyncio.get_running_loop()
@@ -108,38 +176,47 @@ class OrchestratorService:
         else:
             research_res, analysis_res, verification_res = asyncio.run(run_agents())
 
-
-        # Step 3: Verification Check
+        # Step 5: Verification Check
         self._update_task_status(task_id, TaskStatusEnum.VERIFYING.value, trace_id, principal.principal_id)
 
-        # Step 4: Determine if tool or action requires approval
-        # If task prompt involves maintenance or repair, trigger simulated approval flow
+        # Step 6: Determine if tool or action requires approval
         is_maintenance = "maintenance" in task["prompt"].lower() or "pump" in task["prompt"].lower()
         if is_maintenance:
             approval_id = f"appr_{uuid.uuid4().hex[:10]}"
             self.repo.set("approvals", approval_id, {
                 "approval_id": approval_id,
                 "task_id": task_id,
+                "tenant_id": principal.tenant_id,
                 "action": "maintenance_request.execute",
                 "requested_by": principal.principal_id,
                 "status": "PENDING",
-                "created_at": datetime.now(timezone.utc).isoformat()
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "details": {
+                    "asset_id": task.get("incident_id") or "P-204",
+                    "reason": "Vibration and bearing temperature exceeded operating envelope; seal flush required."
+                }
             })
             self._update_task_status(task_id, TaskStatusEnum.AWAITING_APPROVAL.value, trace_id, principal.principal_id, approvals=[approval_id])
             final_result = {
+                "plan": plan,
+                "retrieved_evidence": evidence_items,
                 "research": research_res,
                 "analysis": analysis_res,
                 "verification": verification_res,
                 "action_status": "AWAITING_SUPERVISOR_APPROVAL",
-                "approval_id": approval_id
+                "approval_id": approval_id,
+                "is_simulated": True
             }
         else:
             self._update_task_status(task_id, TaskStatusEnum.COMPLETED.value, trace_id, principal.principal_id)
             final_result = {
+                "plan": plan,
+                "retrieved_evidence": evidence_items,
                 "research": research_res,
                 "analysis": analysis_res,
                 "verification": verification_res,
-                "action_status": "COMPLETED"
+                "action_status": "COMPLETED",
+                "is_simulated": True
             }
 
         self.repo.update("tasks", task_id, {

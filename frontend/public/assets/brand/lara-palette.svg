@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 430" role="img" aria-labelledby="title desc"><title id="title">LARA Bright Lattice palette</title><desc id="desc">Semantic product colour palette with named roles.</desc>
+<rect width="1000" height="430" rx="28" fill="#F5FFE8"/><text x="48" y="58" font-family="Arial" font-size="30" font-weight="800" fill="#101014">BRIGHT LATTICE / SEMANTIC PALETTE</text>
+<g font-family="Arial" fill="#101014">
+<rect x="48" y="100" width="205" height="105" rx="18" fill="#4B43F5"/><text x="68" y="145" font-size="20" font-weight="700" fill="white">BLUE</text><text x="68" y="177" font-size="15" fill="white">Runtime</text>
+<rect x="278" y="100" width="205" height="105" rx="18" fill="#00B9E8"/><text x="298" y="145" font-size="20" font-weight="700">CYAN</text><text x="298" y="177" font-size="15">Routing</text>
+<rect x="508" y="100" width="205" height="105" rx="18" fill="#EC00D4"/><text x="528" y="145" font-size="20" font-weight="700">MAGENTA</text><text x="528" y="177" font-size="15">Authority</text>
+<rect x="738" y="100" width="205" height="105" rx="18" fill="#FF7138"/><text x="758" y="145" font-size="20" font-weight="700">ORANGE</text><text x="758" y="177" font-size="15">Execution</text>
+<rect x="48" y="235" width="205" height="105" rx="18" fill="#23C978"/><text x="68" y="280" font-size="20" font-weight="700">GREEN</text><text x="68" y="312" font-size="15">Allowed / healthy</text>
+<rect x="278" y="235" width="205" height="105" rx="18" fill="#C7B9FF"/><text x="298" y="280" font-size="20" font-weight="700">LILAC</text><text x="298" y="312" font-size="15">Agents / knowledge</text>
+<rect x="508" y="235" width="205" height="105" rx="18" fill="#8B4DFA"/><text x="528" y="280" font-size="20" font-weight="700" fill="white">VIOLET</text><text x="528" y="312" font-size="15" fill="white">Evolution</text>
+<rect x="738" y="235" width="205" height="105" rx="18" fill="#E4FF88"/><text x="758" y="280" font-size="20" font-weight="700">LIME</text><text x="758" y="312" font-size="15">Active context</text>
+</g><text x="48" y="390" font-family="Arial" font-size="15" fill="#66666F">Canvas: #F5FFE8  •  Ink: #101014  •  Pair every state colour with a readable label.</text></svg>

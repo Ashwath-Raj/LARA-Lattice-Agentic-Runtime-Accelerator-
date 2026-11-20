@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
 from backend.app.core.logging import setup_logging
 from backend.app.core.errors import LARAError
-from backend.app.api.routes import auth, tasks, graph, policies, approvals, evolution, audit, health, tools
+from backend.app.api.routes import auth, tasks, graph, policies, approvals, evolution, audit, health, tools, agents, files, governance
 
 setup_logging()
 
@@ -18,12 +18,12 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# CORS middleware for local frontend development
+# CORS middleware with explicit allowed origins (never wildcard * with credentials)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -56,8 +56,7 @@ async def lara_exception_handler(request: Request, exc: LARAError):
                 "code": exc.code,
                 "message": exc.message,
                 "request_id": request_id,
-                "trace_id": trace_id,
-                "details": exc.details
+                "trace_id": trace_id
             }
         }
     )
@@ -66,17 +65,21 @@ async def lara_exception_handler(request: Request, exc: LARAError):
 async def generic_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", f"req_{uuid.uuid4().hex[:12]}")
     trace_id = getattr(request.state, "trace_id", None)
+    import logging
+    logging.getLogger("lara.runtime").error(f"Unhandled exception [req={request_id}]: {str(exc)}", exc_info=exc)
+    # Mask internal error string to avoid information disclosure
     return JSONResponse(
         status_code=500,
         content={
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": str(exc),
+                "message": "An internal server error occurred. Inspect server diagnostic logs with request_id.",
                 "request_id": request_id,
                 "trace_id": trace_id
             }
         }
     )
+
 
 # Include API Routers under /api/v1
 API_PREFIX = "/api/v1"
@@ -85,19 +88,30 @@ app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(tasks.router, prefix=API_PREFIX)
 app.include_router(graph.router, prefix=API_PREFIX)
 app.include_router(policies.router, prefix=API_PREFIX)
+app.include_router(governance.router, prefix=API_PREFIX)
 app.include_router(approvals.router, prefix=API_PREFIX)
 app.include_router(evolution.router, prefix=API_PREFIX)
 app.include_router(audit.router, prefix=API_PREFIX)
+app.include_router(agents.router, prefix=API_PREFIX)
+app.include_router(files.router, prefix=API_PREFIX)
 app.include_router(tools.router, prefix=API_PREFIX)
 
 # Also expose health checks at root for Cloud Run default probe compatibility
 app.include_router(health.router)
 
-@app.get("/")
-def root():
-    return {
-        "service": "LARA Runtime Backend",
-        "version": settings.VERSION,
-        "docs": "/docs",
-        "api_v1": "/api/v1"
-    }
+# Static assets and single-origin frontend mounting
+import os
+from fastapi.staticfiles import StaticFiles
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(static_dir) and os.path.exists(os.path.join(static_dir, "index.html")):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+else:
+    @app.get("/")
+    def root():
+        return {
+            "service": "LARA Runtime Backend",
+            "version": settings.VERSION,
+            "docs": "/docs",
+            "api_v1": "/api/v1"
+        }

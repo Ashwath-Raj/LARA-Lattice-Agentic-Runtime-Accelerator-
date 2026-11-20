@@ -40,3 +40,7 @@ class SandboxUnavailableError(SandboxError):
 class SandboxTimeoutError(SandboxError):
     def __init__(self, message: str = "Sandbox execution timed out", code: str = "SANDBOX_TIMEOUT"):
         super().__init__(message=message, code=code, status_code=504)
+
+class StorageError(LARAError):
+    def __init__(self, message: str = "Storage operation error", code: str = "STORAGE_ERROR", status_code: int = 500, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message=message, code=code, status_code=status_code, details=details)

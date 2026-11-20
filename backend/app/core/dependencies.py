@@ -20,7 +20,10 @@ def get_current_principal(request: Request) -> Principal:
     if not session_id:
         raise AuthenticationError("Authentication session cookie or Bearer token is required")
 
-    return identity_service.validate_session(session_id)
+    principal = identity_service.validate_session(session_id)
+    principal._session_id = session_id
+    return principal
+
 
 def get_optional_principal(request: Request) -> Optional[Principal]:
     try:

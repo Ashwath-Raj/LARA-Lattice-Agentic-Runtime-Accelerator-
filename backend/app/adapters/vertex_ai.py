@@ -15,8 +15,24 @@ class BaseModelAdapter(ABC):
 class MockVertexAIAdapter(BaseModelAdapter):
     """Deterministic mock adapter for development and testing without live GCP credentials."""
     async def generate_structured(self, system_prompt: str, user_prompt: str, schema: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        prompt_lower = user_prompt.lower()
-        if "research" in system_prompt.lower() or "research" in prompt_lower:
+        sp = system_prompt.lower()
+        if "verification" in sp:
+            return {
+                "agent": "verification_agent",
+                "coverage_valid": True,
+                "unsupported_claims": [],
+                "sop_revision_checked": True,
+                "sop_reference": "SOP-MNT-014 Rev 3.2 (Active)",
+                "verification_status": "PASSED"
+            }
+        elif "analysis" in sp:
+            return {
+                "agent": "analysis_agent",
+                "root_cause": "Cavitation caused by clogged upstream strainer leading to bearing overheat.",
+                "hypotheses": ["Upstream blockage", "Impeller wear"],
+                "recommendation": "Perform emergency maintenance inspection and seal replacement according to SOP-MNT-014."
+            }
+        elif "research" in sp:
             return {
                 "agent": "research_agent",
                 "evidence": [
@@ -33,23 +49,7 @@ class MockVertexAIAdapter(BaseModelAdapter):
                 ],
                 "unresolved_questions": []
             }
-        elif "analysis" in system_prompt.lower() or "analysis" in prompt_lower:
-            return {
-                "agent": "analysis_agent",
-                "root_cause": "Cavitation caused by clogged upstream strainer leading to bearing overheat.",
-                "hypotheses": ["Upstream blockage", "Impeller wear"],
-                "recommendation": "Perform emergency maintenance inspection and seal replacement according to SOP-MNT-014."
-            }
-        elif "verification" in system_prompt.lower() or "verification" in prompt_lower:
-            return {
-                "agent": "verification_agent",
-                "coverage_valid": True,
-                "unsupported_claims": [],
-                "sop_revision_checked": True,
-                "sop_reference": "SOP-MNT-014 Rev 3.2 (Active)",
-                "verification_status": "PASSED"
-            }
-        elif "diagnostician" in system_prompt.lower() or "evolution" in prompt_lower:
+        elif "diagnostician" in sp or "evolution" in user_prompt.lower():
             return {
                 "diagnosis": "Research agent omitted checking the SOP revision status and effective date.",
                 "proposed_fix": "Add mandatory SOP revision check step in system instructions.",
@@ -96,7 +96,13 @@ _adapter_instance: Optional[BaseModelAdapter] = None
 def get_model_adapter() -> BaseModelAdapter:
     global _adapter_instance
     if _adapter_instance is None:
-        if os.environ.get("LARA_USE_LIVE_VERTEX_AI") == "true":
+        is_prod = settings.ENVIRONMENT.lower() in ["production", "prod"]
+        use_live = os.environ.get("LARA_USE_LIVE_VERTEX_AI") == "true" or is_prod
+        if is_prod and not use_live:
+            raise RuntimeError("Production configuration error: Live Vertex AI adapter must be enabled in production. Mock adapter is strictly prohibited.")
+        if use_live:
+            if not settings.GOOGLE_CLOUD_PROJECT:
+                raise RuntimeError("GOOGLE_CLOUD_PROJECT must be configured when connecting to Vertex AI.")
             _adapter_instance = VertexAIGeminiAdapter(
                 project=settings.GOOGLE_CLOUD_PROJECT,
                 location=settings.VERTEX_AI_LOCATION,

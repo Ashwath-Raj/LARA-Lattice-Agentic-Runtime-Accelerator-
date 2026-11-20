@@ -33,9 +33,17 @@ class InMemoryRepository(BaseRepository):
         # Load synthetic users
         users_file = ROOT / "data" / "synthetic" / "users.json"
         if users_file.exists():
+            from backend.app.core.security import hash_password
+            from backend.app.core.config import settings
             data = json.loads(users_file.read_text(encoding="utf-8"))
+            default_tenant = data.get("tenant_id", "demo-enterprise")
             for p in data.get("principals", []):
-                self.set("principals", p["principal_id"], p)
+                p_copy = dict(p)
+                if "tenant_id" not in p_copy:
+                    p_copy["tenant_id"] = default_tenant
+                if "password_hash" not in p_copy:
+                    p_copy["password_hash"] = hash_password(settings.DEMO_PASSWORD)
+                self.set("principals", p_copy["principal_id"], p_copy)
 
         # Load graph nodes
         nodes_file = ROOT / "data" / "synthetic" / "graph_nodes.json"
@@ -118,11 +126,18 @@ _repo_instance: Optional[BaseRepository] = None
 
 def get_repository() -> BaseRepository:
     global _repo_instance
+
     if _repo_instance is None:
-        # Use Firestore if explicitly enabled in production, else fallback to InMemory seeded repository
-        # This guarantees robust local execution and offline testability
-        if os.environ.get("LARA_USE_LIVE_FIRESTORE") == "true":
-            from backend.app.core.config import settings
+        from backend.app.core.config import settings
+        is_prod = settings.ENVIRONMENT.lower() in ["production", "prod"]
+        use_live_firestore = os.environ.get("LARA_USE_LIVE_FIRESTORE") == "true" or is_prod
+
+        if is_prod and not use_live_firestore:
+            raise RuntimeError("Production configuration error: Firestore Native mode must be enabled in production. In-memory fallback is strictly prohibited.")
+
+        if use_live_firestore:
+            if not settings.GOOGLE_CLOUD_PROJECT:
+                raise RuntimeError("GOOGLE_CLOUD_PROJECT must be configured when connecting to Firestore.")
             _repo_instance = FirestoreRepository(project=settings.GOOGLE_CLOUD_PROJECT, database=settings.FIRESTORE_DATABASE)
         else:
             _repo_instance = InMemoryRepository()

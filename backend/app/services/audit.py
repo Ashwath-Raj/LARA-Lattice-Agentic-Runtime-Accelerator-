@@ -40,10 +40,20 @@ class AuditService:
         self.repo.set("audit_events", event_id, event.model_dump())
         return event
 
-    def list_events(self, principal_id: Optional[str] = None, task_id: Optional[str] = None, tenant_id: str = "demo-enterprise") -> List[Dict[str, Any]]:
+    def list_events(
+        self,
+        principal_id: Optional[str] = None,
+        task_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        tenant_id: str = "demo-enterprise"
+    ) -> List[Dict[str, Any]]:
         filters = {"tenant_id": tenant_id}
         if task_id:
             filters["task_id"] = task_id
+        if trace_id:
+            filters["trace_id"] = trace_id
+        if principal_id:
+            filters["principal_id"] = principal_id
         events = self.repo.list("audit_events", filters)
         # Sort by timestamp descending
         events.sort(key=lambda x: x.get("timestamp", ""), reverse=True)

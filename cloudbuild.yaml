@@ -1,20 +1,25 @@
-# Template. Confirm build/deploy service-account permissions before running.
+# Cloud Build pipeline for LARA: automated pytest test gate, Artifact Registry container build, and Cloud Run deployment
 substitutions:
   _REGION: asia-south1
   _SERVICE: lara-runtime
   _REPOSITORY: lara-build
   _RUNTIME_SA: lara-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com
+
 steps:
+  # Gate 1: Run comprehensive test suite before building
   - name: python:3.12-slim
     entrypoint: bash
-    args: ['-c', 'pip install -r requirements.txt && pytest -q']
-  - name: node:22-slim
-    entrypoint: bash
-    args: ['-c', 'cd frontend && npm ci && npm run build']
+    args: ['-c', 'pip install --no-cache-dir -r requirements.txt && pytest -v']
+
+  # Gate 2: Build container image with immutable SHA tag
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}', '.']
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}', '-t', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest', '.']
+
+  # Gate 3: Push image to Artifact Registry
   - name: gcr.io/cloud-builders/docker
     args: ['push', '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}']
+
+  # Gate 4: Deploy revision to Cloud Run
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -23,10 +28,11 @@ steps:
       - '${_SERVICE}'
       - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'
       - '--region=${_REGION}'
-      - '--service-account=lara-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com'
+      - '--service-account=${_RUNTIME_SA}'
       - '--port=8080'
       - '--max-instances=2'
       - '--concurrency=20'
-      - '--set-env-vars=APP_ENV=production,DEMO_MODE=true'
+      - '--set-env-vars=APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},VERTEX_AI_LOCATION=us-central1,FIRESTORE_DATABASE=(default)'
+
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'

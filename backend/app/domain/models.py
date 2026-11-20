@@ -100,3 +100,28 @@ class AuditEvent(BaseModel):
     policy_decision: Optional[str] = None
     reason_code: Optional[str] = None
     details: Dict[str, Any] = Field(default_factory=dict)
+
+class ResearchEvidence(BaseModel):
+
+    source_id: str
+    claim: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+class ResearchAgentOutput(BaseModel):
+    agent: str = "research_agent"
+    evidence: List[ResearchEvidence] = Field(default_factory=list)
+    unresolved_questions: List[str] = Field(default_factory=list)
+
+class AnalysisAgentOutput(BaseModel):
+    agent: str = "analysis_agent"
+    root_cause: Optional[str] = None
+    hypotheses: List[str] = Field(default_factory=list)
+    recommendation: Optional[str] = None
+
+class VerificationAgentOutput(BaseModel):
+    agent: str = "verification_agent"
+    coverage_valid: bool
+    unsupported_claims: List[str] = Field(default_factory=list)
+    sop_revision_checked: bool
+    sop_reference: str
+    verification_status: str

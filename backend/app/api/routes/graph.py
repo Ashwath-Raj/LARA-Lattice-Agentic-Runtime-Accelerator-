@@ -1,11 +1,23 @@
-from fastapi import APIRouter, Depends
-from backend.app.schemas.api import RouteResolveResponse
+from typing import List, Dict, Any, Optional
+from fastapi import APIRouter, Depends, Query
+from backend.app.schemas.api import RouteResolveResponse, RoutePreviewRequest, GraphSummaryResponse
 from backend.app.services.highways import HighwayResolver
 from backend.app.core.dependencies import get_current_principal
 from backend.app.domain.models import Principal
 
 router = APIRouter(prefix="/graph", tags=["graph"])
 highways = HighwayResolver()
+
+@router.get("/summary", response_model=GraphSummaryResponse)
+def get_graph_summary(principal: Principal = Depends(get_current_principal)):
+    return highways.get_summary(principal)
+
+@router.get("/nodes", response_model=List[Dict[str, Any]])
+def get_graph_nodes(
+    type: Optional[str] = Query(default=None, description="Filter by node type (e.g. source, tool, agent)"),
+    principal: Principal = Depends(get_current_principal)
+):
+    return highways.get_nodes(principal, node_type=type)
 
 @router.get("/routes/resolve", response_model=RouteResolveResponse)
 def resolve_route(task_id: str, principal: Principal = Depends(get_current_principal)):
@@ -21,3 +33,15 @@ def resolve_route(task_id: str, principal: Principal = Depends(get_current_princ
         score_components=result["score_components"],
         graph_version=result["graph_version"]
     )
+
+@router.post("/routes/preview")
+def preview_route(req: RoutePreviewRequest, principal: Principal = Depends(get_current_principal)):
+    return highways.preview_route(
+        principal=principal,
+        intent=req.intent,
+        required_capabilities=req.required_capabilities
+    )
+
+@router.get("/version")
+def get_graph_version(principal: Principal = Depends(get_current_principal)):
+    return highways.get_version(principal)

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-labelledby="title desc">
+<title id="title">LARA lattice mark</title><desc id="desc">A geometric lattice symbol made from connected blue, cyan, magenta and green blocks.</desc>
+<rect x="8" y="8" width="164" height="164" rx="38" fill="#101014"/>
+<path d="M46 43V111H91" fill="none" stroke="#4B43F5" stroke-width="23" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M91 111H134V72" fill="none" stroke="#00B9E8" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M91 111V139" fill="none" stroke="#EC00D4" stroke-width="18" stroke-linecap="round"/>
+<circle cx="46" cy="43" r="12" fill="#23C978"/>
+<circle cx="134" cy="72" r="12" fill="#FF7138"/>
+<circle cx="91" cy="139" r="10" fill="#C7B9FF"/>
+</svg>

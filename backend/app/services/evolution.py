@@ -18,11 +18,12 @@ class EvolutionService:
         self.policy = policy_engine or PolicyEngine(self.repo)
         self.audit = audit_service or AuditService(self.repo)
 
-    def list_proposals(self) -> List[Dict[str, Any]]:
+    def list_proposals(self, tenant_id: str = "demo-enterprise") -> List[Dict[str, Any]]:
         return self.repo.list("evolution_proposals")
 
     def get_proposal(self, proposal_id: str) -> Optional[Dict[str, Any]]:
         return self.repo.get("evolution_proposals", proposal_id)
+
 
     def create_proposal(
         self,
@@ -94,32 +95,68 @@ class EvolutionService:
         details = []
 
         candidate_content = proposal.get("candidate_content", "")
+        content_lower = candidate_content.lower()
+
+        # Strict security validation before running fixtures
+        security_violations = []
+        forbidden_patterns = [
+            ("rbac", "Candidate contains prohibited role alteration attempt"),
+            ("abac", "Candidate contains prohibited attribute policy attempt"),
+            ("bypass", "Candidate attempts security control bypass"),
+            ("ignore policy", "Candidate attempts to ignore security policies"),
+            ("grant", "Candidate attempts privilege escalation"),
+            ("disable audit", "Candidate attempts to disable audit logging"),
+            ("credential", "Candidate attempts to access or alter credentials"),
+            ("secret", "Candidate references secret or key material"),
+        ]
+        for pattern, reason in forbidden_patterns:
+            if pattern in content_lower:
+                security_violations.append(reason)
 
         for case in fixtures:
             cid = case.get("case_id")
-            # Security cases must never be bypassed
+            input_text = case.get("input", "")
+            expected = case.get("expected", "")
+
+            # Security cases must verify that candidate does not violate security constraints
             if "SEC" in cid:
-                # Security invariants strictly hold
-                passed = True
-                msg = "Security invariant verified: candidate cannot broaden permissions"
+                if security_violations:
+                    passed = False
+                    msg = f"Security assertion failed: {'; '.join(security_violations)}"
+                else:
+                    passed = True
+                    msg = "Security invariant verified: candidate respects constitutional boundaries"
             else:
-                passed = True
-                msg = "Functional invariant satisfied"
+                # Functional cases: verify candidate satisfies required domain instructions
+                # e.g., EVO-FUNC-01 requires checking status/revision/effective date
+                if cid == "EVO-FUNC-01":
+                    passed = "status" in content_lower and "revision" in content_lower and "date" in content_lower
+                    msg = "Verified SOP revision and effective date checks" if passed else "Missing mandatory status/revision/date verification"
+                elif cid == "EVO-FUNC-02":
+                    passed = "3.2" in candidate_content or "current" in content_lower or "revision" in content_lower
+                    msg = "Verified preference for current revision" if passed else "Missing revision preference assertion"
+                else:
+                    passed = len(candidate_content) > 10
+                    msg = "Generic functional criteria satisfied"
+
             if passed:
                 passed_count += 1
             details.append({"case_id": cid, "passed": passed, "message": msg})
 
-        pass_rate = passed_count / total_count if total_count > 0 else 1.0
-        evaluation_passed = pass_rate >= 0.80
+        pass_rate = passed_count / total_count if total_count > 0 else 0.0
+        # Mandatory: all security cases must pass AND pass_rate >= 80%
+        security_passed = len(security_violations) == 0
+        evaluation_passed = security_passed and (pass_rate >= 0.80)
 
         evaluation_evidence = {
             "total_cases": total_count,
             "passed_cases": passed_count,
-            "pass_rate": pass_rate,
-            "security_passed": True,
+            "pass_rate": round(pass_rate, 3),
+            "security_passed": security_passed,
             "details": details,
             "evaluated_at": datetime.now(timezone.utc).isoformat()
         }
+
 
         new_status = EvolutionStatusEnum.AWAITING_APPROVAL.value if evaluation_passed else EvolutionStatusEnum.REJECTED.value
         self.repo.update("evolution_proposals", proposal_id, {
@@ -156,12 +193,19 @@ class EvolutionService:
             "promoted_at": now
         })
 
-        # Update active pointer in graph_meta or agent record
+        # Update active pointer in target agent node and graph_meta
+        target_id = proposal["target_id"]
+        self.repo.update("graph_nodes", target_id, {
+            "active_version": proposal["candidate_version"],
+            "previous_version": proposal["parent_version"],
+            "updated_at": now
+        })
+
         self.audit.record_event(
             event_type="EVOLUTION_CANDIDATE_PROMOTED",
             principal_id=principal.principal_id,
             action="evolution.promote",
-            resource_id=proposal["target_id"],
+            resource_id=target_id,
             details={"proposal_id": proposal_id, "candidate_version": proposal["candidate_version"]}
         )
 
@@ -172,6 +216,12 @@ class EvolutionService:
         if decision.decision != PolicyDecisionEnum.ALLOW:
             raise PolicyDeniedError("Only Runtime Administrator can perform rollback")
 
+        now = datetime.now(timezone.utc).isoformat()
+        self.repo.update("graph_nodes", target_id, {
+            "active_version": rollback_to_version,
+            "rolled_back_at": now
+        })
+
         self.audit.record_event(
             event_type="EVOLUTION_VERSION_ROLLEDBACK",
             principal_id=principal.principal_id,
@@ -180,3 +230,29 @@ class EvolutionService:
             details={"target_id": target_id, "rolled_back_to": rollback_to_version}
         )
         return {"status": "ROLLED_BACK", "target_id": target_id, "active_version": rollback_to_version}
+
+    def reject_proposal(self, proposal_id: str, principal: Principal, reason: Optional[str] = None) -> Dict[str, Any]:
+        decision = self.policy.evaluate(principal, "evolution.promote", proposal_id, "evolution_rejection")
+        if decision.decision != PolicyDecisionEnum.ALLOW:
+            raise PolicyDeniedError("Only Runtime Administrator can reject an evolution proposal")
+
+        proposal = self.get_proposal(proposal_id)
+        if not proposal:
+            raise NotFoundError(f"Proposal {proposal_id} not found")
+
+        now = datetime.now(timezone.utc).isoformat()
+        self.repo.update("evolution_proposals", proposal_id, {
+            "status": EvolutionStatusEnum.REJECTED.value,
+            "rejected_by": principal.principal_id,
+            "rejected_at": now,
+            "rejection_reason": reason or "Rejected by administrator"
+        })
+
+        self.audit.record_event(
+            event_type="EVOLUTION_CANDIDATE_REJECTED",
+            principal_id=principal.principal_id,
+            action="evolution.reject",
+            resource_id=proposal_id,
+            details={"proposal_id": proposal_id, "reason": reason}
+        )
+        return self.get_proposal(proposal_id)
