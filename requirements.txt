@@ -10,4 +10,6 @@ networkx
 python-multipart
 passlib[bcrypt]
 pytest
+pytest-asyncio
 httpx
+

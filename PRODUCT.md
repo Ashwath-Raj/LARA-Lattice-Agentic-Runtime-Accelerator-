@@ -10,8 +10,8 @@ web
 
 - **Frontend**: React, TypeScript, Vite, Tailwind CSS, React Flow (for live graph visualization and telemetry).
 - **Backend**: Python, FastAPI.
-- **Data & State Infrastructure**: Neo4j Aura (knowledge & capability graph store), Firestore (operational execution state), Google Cloud Storage (object storage).
-- **Model Intelligence**: Gemini API behind a provider-independent adapter contract.
+- **Data & State Infrastructure**: Firestore Native mode (canonical graph nodes/edges and operational execution state; in-process adjacency for route resolution), Google Cloud Storage (object storage).
+- **Model Intelligence**: Vertex AI Gemini via Google Gen AI SDK in Vertex mode behind a provider-independent adapter contract.
 
 ## Users
 
