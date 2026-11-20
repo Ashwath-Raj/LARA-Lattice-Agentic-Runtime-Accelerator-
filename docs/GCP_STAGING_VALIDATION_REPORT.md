@@ -1,6 +1,9 @@
 # LARA — GCP Staging Validation & Acceptance Report
 
 **Integration Branch:** `integrate/lara-gcp-staging`  
+**Remote Branch:** `origin/integrate/lara-gcp-staging`  
+**Integration Commit SHA:** `16ca14b6474f4465133472a84a4bd57c8877604c`  
+**Pull Request Target:** `main` (`https://github.com/Ashwath-Raj/LARA-Lattice-Agentic-Runtime-Accelerator-/compare/main...integrate/lara-gcp-staging`)  
 **Repository:** `Ashwath-Raj/LARA-Lattice-Agentic-Runtime-Accelerator-`  
 **Date of Audit:** 2026-11-21  
 **Integrator:** Antigravity (LARA Integration & Staging Engineer)  
