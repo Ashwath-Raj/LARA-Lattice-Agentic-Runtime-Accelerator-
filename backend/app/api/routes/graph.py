@@ -19,6 +19,10 @@ def get_graph_nodes(
 ):
     return highways.get_nodes(principal, node_type=type)
 
+@router.get("/edges", response_model=List[Dict[str, Any]])
+def get_graph_edges(principal: Principal = Depends(get_current_principal)):
+    return highways.get_edges(principal)
+
 @router.get("/routes/resolve", response_model=RouteResolveResponse)
 def resolve_route(task_id: str, principal: Principal = Depends(get_current_principal)):
     result = highways.resolve_routes(principal, task_id)

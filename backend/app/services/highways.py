@@ -172,6 +172,20 @@ class HighwayResolver:
                 })
         return nodes
 
+    def get_edges(self, principal: Principal) -> List[Dict[str, Any]]:
+        permitted_nodes = {n["node_id"] for n in self.get_nodes(principal)}
+        G = self._build_graph(principal.tenant_id)
+        edges = []
+        for u, v, d in G.edges(data=True):
+            if u in permitted_nodes and v in permitted_nodes:
+                edges.append({
+                    "source": u,
+                    "target": v,
+                    "edge_type": d.get("edge_type", "FLOWS_TO"),
+                    "weight": d.get("weight", 1.0)
+                })
+        return edges
+
     def preview_route(
         self,
         principal: Principal,

@@ -54,3 +54,13 @@ def test_graph_routes_preview(client):
     assert "selected_path" in preview
     assert "score_components" in preview
     assert preview["principal_id"] == "usr_operator_01"
+
+def test_graph_edges(client):
+    client.post("/api/v1/auth/demo-login", json={"principal_id": "usr_operator_01"})
+    res = client.get("/api/v1/graph/edges")
+    assert res.status_code == 200
+    edges = res.json()
+    assert isinstance(edges, list)
+    for edge in edges:
+        assert "source" in edge
+        assert "target" in edge

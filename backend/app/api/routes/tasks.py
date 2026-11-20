@@ -9,6 +9,30 @@ from backend.app.core.errors import NotFoundError
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 orchestrator = OrchestratorService()
 
+@router.get("", response_model=List[TaskResponse])
+def list_tasks(principal: Principal = Depends(get_current_principal)):
+    tasks = orchestrator.repo.list("tasks")
+    tasks = [t for t in tasks if t.get("tenant_id", "demo-enterprise") == principal.tenant_id]
+
+    if "operator" in principal.roles and "supervisor" not in principal.roles and "runtime_admin" not in principal.roles and "auditor" not in principal.roles:
+        tasks = [t for t in tasks if t.get("created_by") == principal.principal_id]
+
+    return [
+        TaskResponse(
+            task_id=t["task_id"],
+            title=t.get("title"),
+            prompt=t["prompt"],
+            status=t["status"],
+            trace_id=t["trace_id"],
+            created_at=t["created_at"],
+            updated_at=t.get("updated_at", t["created_at"]),
+            created_by=t.get("created_by", principal.principal_id),
+            result=t.get("result"),
+            approvals=t.get("approvals")
+        )
+        for t in tasks
+    ]
+
 @router.post("", response_model=TaskAccepted, status_code=status.HTTP_202_ACCEPTED)
 def create_task(req: TaskCreate, principal: Principal = Depends(get_current_principal)):
     task = orchestrator.create_task(

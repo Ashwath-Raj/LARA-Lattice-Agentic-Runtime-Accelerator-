@@ -1,4 +1,18 @@
-# Cloud Run backend container: hardened non-root runtime
+# Stage 1: Build the React 19 Frontend from source
+FROM node:22-alpine AS frontend-builder
+WORKDIR /build
+
+# Copy frontend configuration and locked dependencies
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm ci
+
+# Copy frontend source and configuration
+COPY frontend/ ./frontend/
+
+# Run frontend type-check, tests, and build (outputs to backend/app/static)
+RUN cd frontend && npm test -- --run && npm run build
+
+# Stage 2: Hardened Python 3.12 runtime
 FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -17,9 +31,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 COPY data/ ./data/
 
-# Ensure static directory exists and set ownership
-RUN mkdir -p /app/backend/static && \
-    chown -R appuser:appgroup /app
+# Copy compiled static assets from frontend-builder into backend/app/static
+COPY --from=frontend-builder /build/backend/app/static/ ./backend/app/static/
+
+RUN chown -R appuser:appgroup /app
 
 USER appuser
 

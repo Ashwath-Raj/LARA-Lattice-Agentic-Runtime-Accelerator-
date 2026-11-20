@@ -1,117 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { WorkbenchView } from './views/WorkbenchView';
-import { HighwaysView } from './views/HighwaysView';
-import { AgentsView } from './views/AgentsView';
-import { EvolutionView } from './views/EvolutionView';
-import { GovernanceView } from './views/GovernanceView';
-import { ApprovalsView } from './views/ApprovalsView';
-import { AuditView } from './views/AuditView';
-import { api, Principal } from './lib/api';
-import './styles/lara-theme.css';
+import React, { useState } from 'react';
+import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { AuthProvider } from './features/auth/AuthContext';
+import { AppShell, PageId } from './components/layout/AppShell';
+import { IconButton } from './components/ui';
+import { api } from './api/client';
+import {
+  ApprovalQueuePage,
+  AuditTrailPage,
+  AgentFleetPage,
+  EvolutionLabPage,
+  GovernancePage,
+  HighwaysPage,
+  InvestigationListPage,
+  InvestigationWorkspace,
+  NewInvestigationDialog,
+  OverviewPage
+} from './features/Pages';
 
-export const App: React.FC = () => {
-  const [currentPrincipal, setCurrentPrincipal] = useState<Principal | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('workbench');
-  const [systemHealthy, setSystemHealthy] = useState<boolean>(true);
-  const [loading, setLoading] = useState<boolean>(true);
+function MainApp() {
+  const [page, setPage] = useState<PageId>('overview');
+  const [newOpen, setNewOpen] = useState(false);
+  const [selectedInvestigation, setSelectedInvestigation] = useState('');
+  const [toast, setToast] = useState('');
 
-  // Initialize session and health check
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const health = await api.checkHealth();
-        setSystemHealthy(health.status === 'ok' || health.status === 'healthy');
-      } catch (err) {
-        console.warn('Health check warning:', err);
-        setSystemHealthy(false);
-      }
+  const notify = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 3200);
+  };
 
-      try {
-        // Try getting active principal
-        const me = await api.getMe();
-        setCurrentPrincipal(me);
-      } catch {
-        // Auto-login with default demo operator
-        try {
-          const res = await api.demoLogin('usr_operator_01');
-          setCurrentPrincipal(res.principal);
-        } catch (loginErr) {
-          console.error('Demo auto-login failed:', loginErr);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  const handleSwitchIdentity = async (principalId: string) => {
+  const createInvestigation = async (title: string, asset: string, scope?: string) => {
     try {
-      const res = await api.demoLogin(principalId);
-      setCurrentPrincipal(res.principal);
+      const accepted = await api.createTask({
+        title,
+        prompt: scope || `Investigate ${title} on ${asset}`,
+        incident_id: asset.includes('P-204') ? 'INC-204' : asset.replace(/\s+/g, '-').toUpperCase(),
+      });
+      notify(`Investigation created: ${accepted.task_id} (Trace: ${accepted.trace_id.substring(0, 10)})`);
+      setSelectedInvestigation(accepted.task_id);
+      setPage('investigations');
     } catch (err) {
-      console.error('Failed to switch demo identity:', err);
+      console.error('Failed to create investigation:', err);
+      const msg = err instanceof Error ? err.message : 'Unknown backend error';
+      notify(`Failed to create investigation: ${msg}`);
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--lara-canvas)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <img src="/assets/brand/lara-mark.svg" alt="LARA" style={{ width: 64, height: 64, marginBottom: 16 }} />
-          <div style={{ fontSize: 18, fontWeight: 800 }}>Initializing LARA Runtime...</div>
-          <div style={{ fontSize: 13, color: 'var(--lara-muted)', marginTop: 4 }}>Loading Bright Lattice Agentic Context</div>
-        </div>
-      </div>
-    );
-  }
+  const renderContent = () => {
+    switch (page) {
+      case 'overview':
+        return (
+          <OverviewPage
+            onNavigate={setPage}
+            onStart={() => setNewOpen(true)}
+            onSelectInvestigation={(id) => {
+              setSelectedInvestigation(id);
+              setPage('investigations');
+            }}
+          />
+        );
+      case 'investigations':
+        return selectedInvestigation ? (
+          <InvestigationWorkspace
+            id={selectedInvestigation}
+            onBack={() => setSelectedInvestigation('')}
+            onApprove={() => setPage('approvals')}
+          />
+        ) : (
+          <InvestigationListPage
+            onSelect={setSelectedInvestigation}
+            onStart={() => setNewOpen(true)}
+          />
+        );
+      case 'highways':
+        return <HighwaysPage />;
+      case 'agents':
+        return <AgentFleetPage />;
+      case 'evolution':
+        return <EvolutionLabPage />;
+      case 'approvals':
+        return <ApprovalQueuePage />;
+      case 'governance':
+        return <GovernancePage />;
+      case 'audit':
+        return <AuditTrailPage />;
+      default:
+        return (
+          <OverviewPage
+            onNavigate={setPage}
+            onStart={() => setNewOpen(true)}
+            onSelectInvestigation={(id) => {
+              setSelectedInvestigation(id);
+              setPage('investigations');
+            }}
+          />
+        );
+    }
+  };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Header
-        currentPrincipal={currentPrincipal}
-        onSwitchIdentity={handleSwitchIdentity}
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        systemHealthy={systemHealthy}
+    <AppShell page={page} onNavigate={(id) => { setPage(id); setSelectedInvestigation(''); }}>
+      {renderContent()}
+      <NewInvestigationDialog
+        open={newOpen}
+        onClose={() => setNewOpen(false)}
+        onCreate={createInvestigation}
       />
-
-      <main style={{ flex: 1, paddingBottom: 48 }}>
-        {activeTab === 'workbench' && (
-          <WorkbenchView currentPrincipal={currentPrincipal} onNavigateToTab={setActiveTab} />
-        )}
-        {activeTab === 'highways' && (
-          <HighwaysView currentPrincipal={currentPrincipal} />
-        )}
-        {activeTab === 'agents' && (
-          <AgentsView currentPrincipal={currentPrincipal} onNavigateToTab={setActiveTab} />
-        )}
-        {activeTab === 'evolution' && (
-          <EvolutionView currentPrincipal={currentPrincipal} />
-        )}
-        {activeTab === 'governance' && (
-          <GovernanceView currentPrincipal={currentPrincipal} />
-        )}
-        {activeTab === 'approvals' && (
-          <ApprovalsView currentPrincipal={currentPrincipal} onNavigateToTab={setActiveTab} />
-        )}
-        {activeTab === 'audit' && (
-          <AuditView currentPrincipal={currentPrincipal} />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer style={{ borderTop: '1px solid var(--lara-line)', background: 'var(--lara-white)', padding: '16px 24px', textAlign: 'center', fontSize: 12, color: 'var(--lara-muted)' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong>LARA — Lattice Agentic Runtime Accelerator</strong> • Model-Independent Enterprise Substrate
-          </div>
-          <div>
-            Google Startup Buildathon Prototype • Protected by Unified Policy & Constitutional Guardrails
-          </div>
+      {toast && (
+        <div className={`toast ${toast.startsWith('Failed') ? 'toast-error' : ''}`} role="status">
+          {toast.startsWith('Failed') ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />}
+          <span>{toast}</span>
+          <IconButton label="Dismiss notification" onClick={() => setToast('')}>
+            <X size={15} />
+          </IconButton>
         </div>
-      </footer>
-    </div>
+      )}
+    </AppShell>
   );
-};
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
+  );
+}

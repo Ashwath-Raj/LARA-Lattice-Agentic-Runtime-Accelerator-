@@ -83,3 +83,26 @@ def test_task_events_timeline(client):
     assert len(events) >= 1
     event_types = [e["event_type"] for e in events]
     assert "TASK_CREATED" in event_types
+
+def test_list_tasks_tenant_and_role_scoping(client):
+    # Log in as operator
+    client.post("/api/v1/auth/demo-login", json={"principal_id": "usr_operator_01"})
+    res_create = client.post("/api/v1/tasks", json={
+        "title": "Operator Listed Task",
+        "prompt": "Operator investigating subsystem anomaly",
+    })
+    assert res_create.status_code == 202
+    created_id = res_create.json()["task_id"]
+
+    # List tasks as operator: must include the created task
+    res_list = client.get("/api/v1/tasks")
+    assert res_list.status_code == 200
+    tasks = res_list.json()
+    assert any(t["task_id"] == created_id for t in tasks)
+
+    # Log in as supervisor: supervisor sees tasks in their tenant
+    client.post("/api/v1/auth/demo-login", json={"principal_id": "usr_supervisor_01"})
+    res_sup = client.get("/api/v1/tasks")
+    assert res_sup.status_code == 200
+    sup_tasks = res_sup.json()
+    assert any(t["task_id"] == created_id for t in sup_tasks)
