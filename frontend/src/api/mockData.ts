@@ -1,8 +1,6 @@
 import {
   Principal,
   Task,
-  TaskEvent,
-  RouteResult,
   GraphNode,
   GraphEdge,
   Agent,

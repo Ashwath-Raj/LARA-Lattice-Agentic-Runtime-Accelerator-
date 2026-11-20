@@ -6,7 +6,14 @@ import {
   LockKeyhole, MoreHorizontal, Network, Plus, RefreshCw, ShieldAlert,
   ShieldCheck, Workflow
 } from 'lucide-react';
-import { investigations, evidence, approvals as demoApprovals, auditEvents as demoAuditEvents, principals as demoPrincipals } from '../data/demo';
+import {
+  investigations,
+  evidence,
+  approvals as demoApprovals,
+  principals as demoPrincipals,
+  Severity,
+  State
+} from '../data/demo';
 import { PageId } from '../components/layout/AppShell';
 import {
   Avatar, Badge, Button, DataTable, EmptyState, FilterChip, InlineAlert, JsonViewer,
@@ -22,7 +29,8 @@ import {
   ApprovalItem,
   EvolutionProposal,
   AuditEvent,
-  PolicyDecision
+  PolicyDecision,
+  SystemHealth
 } from '../api/types';
 
 function ChartPanel() {
@@ -80,10 +88,20 @@ export function OverviewWelcomePanel({ onStart, onNavigate }: { onStart: () => v
 }
 
 export function SystemHealthStrip() {
+  const [health, setHealth] = useState<SystemHealth | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getHealth().then((h) => {
+      if (isMounted) setHealth(h);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
   const systems = [
-    ['Runtime API', 'Operational', 'green'],
-    ['Knowledge sources', '4 connected', 'blue'],
-    ['Model provider', 'Gemini adapter', 'blue'],
+    ['Runtime API', health?.status === 'HEALTHY' ? 'Operational' : (health?.status || 'Operational'), 'green'],
+    ['Knowledge sources', '4 connected (Schema)', 'blue'],
+    ['Cloud datastore', health?.firestore === 'CONNECTED' ? 'Connected' : 'Unchecked by /ready', health?.firestore === 'CONNECTED' ? 'green' : 'amber'],
     ['Policy engine', 'Enforcing', 'green']
   ];
   return (
@@ -725,8 +743,8 @@ export function HighwaysPage() {
                         strokeWidth={selected === n.label ? 2.2 : 1}
                       />
                       <circle cx={n.x + 14} cy={n.y - 9} r="4" fill={n.kind === 'Source' ? '#0B9A9A' : n.kind === 'Workflow' ? '#1A73E8' : n.kind === 'Agent' ? '#7B61C7' : '#188038'} />
-                      <text x={n.x + 25} y={n.y - 6} fontSize="10" fill="#758195" fontWeight="600">{n.kind.toUpperCase()}</text>
-                      <text x={n.x + 12} y={n.y + 11} fontSize="11" fill="#202124" fontWeight="600">{n.label}</text>
+                      <text x={n.x + 25} y={n.y - 6} fontSize="10" fill="#758195" fontWeight="600" aria-hidden="true">{n.kind.toUpperCase()}</text>
+                      <text x={n.x + 12} y={n.y + 11} fontSize="11" fill="#202124" fontWeight="600" aria-hidden="true">{n.label}</text>
                     </g>
                   ))}
                 </svg>
@@ -923,7 +941,42 @@ export function EvaluationSuiteRunner() {
 }
 
 export function EvolutionLabPage() {
+  const { principal } = useAuth();
   const [tab, setTab] = useState('Candidate');
+  const [proposals, setProposals] = useState<EvolutionProposal[]>([]);
+  const [justification, setJustification] = useState('Promote candidate following full evaluation and safety verification');
+  const [promoteStatus, setPromoteStatus] = useState<string>('');
+  const [isPromoting, setIsPromoting] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getEvolutionProposals().then((res) => {
+      if (isMounted) setProposals(res);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const proposal = proposals[0];
+  const isAdmin = principal.roles.includes('runtime_admin');
+  const isPassed = proposal?.evaluation_status === 'PASSED';
+  const isPromoted = proposal?.status === 'PROMOTED';
+  const canPromote = isAdmin && isPassed && !isPromoted && justification.trim().length >= 8;
+
+  const handlePromote = async () => {
+    if (!proposal || !canPromote) return;
+    setIsPromoting(true);
+    setPromoteStatus('');
+    try {
+      const res = await api.approveCandidate(proposal.proposal_id, justification);
+      setPromoteStatus(`Successfully promoted candidate ${res.candidate_version} to active production.`);
+      setProposals(prev => prev.map(p => p.proposal_id === res.proposal_id ? res : p));
+    } catch (err) {
+      setPromoteStatus(err instanceof Error ? err.message : 'Failed to promote candidate');
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -933,7 +986,7 @@ export function EvolutionLabPage() {
         actions={<Button><GitBranch size={15} /> Version lineage</Button>}
       />
       <InlineAlert tone="info" title="Human-supervised promotion">
-        Candidate changes are isolated until evaluation passes and an authorized administrator approves promotion.
+        Candidate changes are isolated until evaluation passes and an authorized administrator approves promotion. Active role: {principal.display_name} ({principal.roles.join(', ')}).
       </InlineAlert>
       <div className="toolbar-row">
         <Tabs items={['Candidate', 'Failure signals', 'Version history']} value={tab} onChange={setTab} />
@@ -960,9 +1013,9 @@ export function EvolutionLabPage() {
               </div>
               <div className="lineage-connector" />
               <div className="lineage-node">
-                <span className="lineage-dot candidate" />
+                <span className={`lineage-dot ${isPromoted ? 'promoted' : 'candidate'}`} />
                 <div><strong>v1.0.1-candidate.1</strong><small>Parent: v1.0.0 · SHA-256: 9d12…c41a</small></div>
-                <Badge tone="purple">Candidate</Badge>
+                <Badge tone={isPromoted ? 'green' : 'purple'}>{isPromoted ? 'Promoted' : 'Candidate'}</Badge>
               </div>
             </div>
           </Panel>
@@ -973,13 +1026,45 @@ export function EvolutionLabPage() {
             <div className="approval-gateway">
               <LockKeyhole size={22} />
               <div>
-                <strong>Promotion locked pending final evaluation</strong>
-                <p>One invariant is still running. Promotion becomes available only after all checks pass.</p>
+                <strong>{isPromoted ? 'Candidate promoted to production' : isPassed ? 'Evaluation suite passed' : 'Promotion locked pending evaluation'}</strong>
+                <p>
+                  {isPromoted
+                    ? `Promoted by ${proposal?.approved_by || 'Runtime Administrator'}. Active version updated.`
+                    : isPassed
+                    ? 'All 6 test cases passed. Administrator justification required.'
+                    : 'Run evaluation suite before promotion becomes available.'}
+                </p>
               </div>
             </div>
-            <TextField label="Approval justification" placeholder="Explain why this candidate is safe to promote" />
-            <Button variant="primary" disabled>Promote candidate</Button>
-            <Button variant="subtle">Reject candidate</Button>
+            {!isAdmin && !isPromoted && (
+              <InlineAlert tone="warning" title="Privilege restricted">
+                Only Runtime Administrator (usr_admin_01) can promote evolution candidates. Switch identity to test promotion.
+              </InlineAlert>
+            )}
+            <TextField
+              label="Approval justification"
+              value={justification}
+              onChange={setJustification}
+              placeholder="Explain why this candidate is safe to promote"
+              disabled={!isAdmin || isPromoted}
+            />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <Button
+                variant="primary"
+                disabled={!canPromote || isPromoting}
+                onClick={handlePromote}
+              >
+                {isPromoting ? 'Promoting...' : isPromoted ? 'Candidate Promoted ✓' : 'Promote candidate'}
+              </Button>
+              <Button variant="subtle" disabled={!isAdmin || isPromoted}>Reject candidate</Button>
+            </div>
+            {promoteStatus && (
+              <div style={{ marginTop: '12px' }}>
+                <InlineAlert tone="success" title="Evolution Status">
+                  {promoteStatus}
+                </InlineAlert>
+              </div>
+            )}
           </Panel>
         </div>
       </div>
@@ -1006,27 +1091,44 @@ export function PrincipalDirectory() {
 }
 
 export function PolicySimulator() {
+  const { principal } = useAuth();
   const [action, setAction] = useState('dispatch_maintenance');
   const [resource, setResource] = useState('asset:P-204');
   const [purpose, setPurpose] = useState('incident_response');
-  const [evaluated, setEvaluated] = useState(false);
+  const [decision, setDecision] = useState<PolicyDecision | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const evaluate = async () => {
+    setLoading(true);
+    try {
+      const res = await api.evaluatePolicy({ action, resource_id: resource, purpose });
+      setDecision(res);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Panel title="Policy Decision Simulator" subtitle="Evaluate an action against the active principal and policy context">
       <div className="form-grid">
-        <SelectField label="Action" value={action} onChange={v => { setAction(v); setEvaluated(false); }} options={['dispatch_maintenance', 'read_telemetry', 'read_vendor_contract', 'promote_agent_version']} />
-        <SelectField label="Resource" value={resource} onChange={v => { setResource(v); setEvaluated(false); }} options={['asset:P-204', 'source:telemetry', 'source:vendor-contract', 'agent:verification']} />
-        <SelectField label="Purpose" value={purpose} onChange={v => { setPurpose(v); setEvaluated(false); }} options={['incident_response', 'routine_maintenance', 'configuration_change', 'audit_review']} />
+        <SelectField label="Action" value={action} onChange={v => { setAction(v); setDecision(null); }} options={['dispatch_maintenance', 'read_telemetry', 'read_vendor_contract', 'promote_agent_version']} />
+        <SelectField label="Resource" value={resource} onChange={v => { setResource(v); setDecision(null); }} options={['asset:P-204', 'source:telemetry', 'source:vendor-contract', 'agent:verification']} />
+        <SelectField label="Purpose" value={purpose} onChange={v => { setPurpose(v); setDecision(null); }} options={['incident_response', 'routine_maintenance', 'configuration_change', 'audit_review']} />
         <div className="form-full">
-          <Button variant="primary" onClick={() => setEvaluated(true)}>Evaluate policy <ArrowRight size={14} /></Button>
+          <Button variant="primary" disabled={loading} onClick={evaluate}>
+            {loading ? 'Evaluating...' : <>Evaluate policy <ArrowRight size={14} /></>}
+          </Button>
         </div>
       </div>
-      {evaluated && (
+      {decision && (
         <div className="policy-result">
           <div className="policy-result-icon"><ShieldCheck size={20} /></div>
           <div>
-            <strong>{action === 'dispatch_maintenance' ? 'REQUIRE_APPROVAL' : resource === 'source:vendor-contract' ? 'DENY' : 'ALLOW'}</strong>
-            <p>{action === 'dispatch_maintenance' ? 'Supervisor approval required for operational dispatch.' : resource === 'source:vendor-contract' ? 'Current Operator principal does not have vendor-contract clearance.' : 'The requested read is permitted for this principal and stated purpose.'}</p>
-            <small>Principal: Maya Chen · Policy set: north-plant-v4</small>
+            <strong>{decision.decision}</strong>
+            <p>Reason code: <span className="mono">{decision.reason_code}</span></p>
+            <small>Principal: {principal.display_name} ({principal.roles.join(', ')}) · Policy ID: {decision.policy_id} · Evaluated: {new Date(decision.evaluated_at).toLocaleTimeString()}</small>
           </div>
         </div>
       )}
@@ -1056,10 +1158,29 @@ export function GovernancePage() {
 }
 
 export function ApprovalQueueTable({ onSelect }: { onSelect: (id: string) => void }) {
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getApprovals().then((res) => {
+      if (isMounted) setApprovals(res);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const rows = approvals.length > 0 ? approvals.map(a => ({
+    id: a.approval_id,
+    action: a.action,
+    requester: a.requester_name,
+    risk: a.risk_level === 'HIGH' ? 'High' : 'Medium',
+    age: 'Recent',
+    status: a.status === 'PENDING' ? 'Awaiting approval' : a.status === 'APPROVED' ? 'Approved' : 'Rejected'
+  })) : demoApprovals;
+
   return (
     <Panel title="Approval queue" subtitle="High-impact actions awaiting an authorized decision">
       <DataTable
-        rows={demoApprovals}
+        rows={rows}
         rowKey="id"
         columns={[
           { key: 'id', label: 'Request', render: r => <span className="mono link-text">{r.id}</span> },
@@ -1074,17 +1195,48 @@ export function ApprovalQueueTable({ onSelect }: { onSelect: (id: string) => voi
   );
 }
 
-export function ApprovalDecisionBar({ onDecision }: { onDecision: (v: string) => void }) {
-  const [reason, setReason] = useState('');
+export function ApprovalDecisionBar({
+  onDecision,
+  disabled,
+  disabledReason,
+}: {
+  onDecision: (decision: string, reason: string) => void;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
+  const [reason, setReason] = useState('Reviewed maintenance records and SOP-MNT-014; approved dispatch.');
   return (
     <div className="decision-box">
       <label className="field">
         <span className="field-label">Decision justification · required</span>
-        <textarea value={reason} onChange={e => setReason(e.target.value)} rows={3} placeholder="Record the operational reason for this decision (minimum 8 characters)" />
+        <textarea
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          rows={3}
+          placeholder="Record the operational reason for this decision (minimum 8 characters)"
+          disabled={disabled}
+        />
       </label>
+      {disabled && disabledReason && (
+        <div style={{ color: '#C5221F', fontSize: '12px', marginTop: '4px', marginBottom: '8px' }}>
+          {disabledReason}
+        </div>
+      )}
       <div className="decision-actions">
-        <Button variant="danger" disabled={reason.trim().length < 8} onClick={() => onDecision('Rejected')}>Reject request</Button>
-        <Button variant="primary" disabled={reason.trim().length < 8} onClick={() => onDecision('Approved')}><Check size={15} /> Approve request</Button>
+        <Button
+          variant="danger"
+          disabled={disabled || reason.trim().length < 8}
+          onClick={() => onDecision('Rejected', reason)}
+        >
+          Reject request
+        </Button>
+        <Button
+          variant="primary"
+          disabled={disabled || reason.trim().length < 8}
+          onClick={() => onDecision('Approved', reason)}
+        >
+          <Check size={15} /> Approve request
+        </Button>
       </div>
       <small>Self-approval is blocked by separation-of-duties policy.</small>
     </div>
@@ -1092,9 +1244,72 @@ export function ApprovalDecisionBar({ onDecision }: { onDecision: (v: string) =>
 }
 
 export function ApprovalQueuePage() {
-  const [selected, setSelected] = useState(demoApprovals[0].id);
-  const [decision, setDecision] = useState('');
-  const item = demoApprovals.find(a => a.id === selected) ?? demoApprovals[0];
+  const { principal } = useAuth();
+  const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
+  const [selected, setSelected] = useState<string>('');
+  const [feedback, setFeedback] = useState<{ tone: 'success' | 'warning' | 'danger'; message: string } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getApprovals().then((res) => {
+      if (isMounted) {
+        setApprovals(res);
+        if (res.length > 0 && !selected) setSelected(res[0].approval_id);
+      }
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, [selected]);
+
+  const item = approvals.find(a => a.approval_id === selected) || approvals[0] || {
+    approval_id: 'appr_demo',
+    task_id: 'task_demo_inc204',
+    trace_id: 'trc_demo',
+    requester_id: 'usr_operator_01',
+    requester_name: 'Maya Operator',
+    action: 'Dispatch maintenance team to P-204',
+    tool_name: 'tool:maintenance-request',
+    risk_level: 'HIGH',
+    evidence_summary: 'Bearing inspection and controlled shutdown procedure recommended after vibration anomaly.',
+    policy_reason: 'Enterprise equipment work orders require Supervisor approval.',
+    status: 'PENDING',
+    created_at: '2026-11-20T10:00:00.000Z'
+  };
+
+  const isSupervisorOrAdmin = principal.roles.includes('supervisor') || principal.roles.includes('runtime_admin');
+  const isRequester = item.requester_id === principal.principal_id;
+  const canApprove = isSupervisorOrAdmin && (!isRequester || principal.roles.includes('runtime_admin'));
+  const isAlreadyDecided = item.status === 'APPROVED' || item.status === 'REJECTED';
+
+  const disabledReason = isAlreadyDecided
+    ? `Action already decided (${item.status}) by ${item.decided_by || 'Supervisor'}.`
+    : !isSupervisorOrAdmin
+    ? 'Access Denied: Only Supervisor or Administrator can approve actions.'
+    : isRequester && !principal.roles.includes('runtime_admin')
+    ? `Separation of Duties: Requester (${principal.display_name}) cannot self-approve. Switch to Supervisor (Ravi) to authorize this action.`
+    : undefined;
+
+  const handleDecision = async (decisionStr: string, justification: string) => {
+    setFeedback(null);
+    try {
+      const decisionType = decisionStr === 'Approved' ? 'APPROVE' : 'REJECT';
+      const updated = await api.decideApproval(item.approval_id, {
+        decision: decisionType,
+        reason: justification,
+      });
+      setApprovals(prev => prev.map(a => a.approval_id === updated.approval_id ? updated : a));
+      setFeedback({
+        tone: 'success',
+        message: `Action ${decisionStr.toLowerCase()} successfully by ${principal.display_name}. Audit trail updated.`
+      });
+    } catch (err) {
+      setFeedback({
+        tone: 'danger',
+        message: err instanceof Error ? err.message : 'Failed to record approval decision'
+      });
+    }
+  };
+
+  const pendingCount = approvals.filter(a => a.status === 'PENDING').length;
 
   return (
     <>
@@ -1106,33 +1321,39 @@ export function ApprovalQueuePage() {
       <div className="approval-layout">
         <div>
           <div className="approval-count">
-            <strong>03</strong>
+            <strong>{String(pendingCount).padStart(2, '0')}</strong>
             <span>Requests requiring attention</span>
             <Badge tone="amber">Pending</Badge>
           </div>
           <div className="approval-cards">
-            {demoApprovals.map(a => (
-              <button key={a.id} className={`approval-card ${selected === a.id ? 'selected' : ''}`} onClick={() => { setSelected(a.id); setDecision(''); }}>
+            {approvals.map(a => (
+              <button
+                key={a.approval_id}
+                className={`approval-card ${selected === a.approval_id ? 'selected' : ''}`}
+                onClick={() => { setSelected(a.approval_id); setFeedback(null); }}
+              >
                 <div className="approval-card-top">
-                  <span className="mono">{a.id}</span>
-                  <StatusBadge status={a.risk} />
+                  <span className="mono">{a.approval_id}</span>
+                  <StatusBadge status={a.status === 'APPROVED' ? 'Approved' : a.status === 'REJECTED' ? 'Blocked' : 'High'} />
                 </div>
                 <strong>{a.action}</strong>
-                <p>{a.requester} · {a.age} ago</p>
+                <p>{a.requester_name} · {a.task_id}</p>
               </button>
             ))}
           </div>
         </div>
-        <Panel title="Request details" subtitle={item.id}>
+        <Panel title="Request details" subtitle={item.approval_id}>
           <div className="request-summary">
-            <Badge tone="amber">{item.status}</Badge>
+            <Badge tone={item.status === 'APPROVED' ? 'green' : item.status === 'REJECTED' ? 'red' : 'amber'}>
+              {item.status}
+            </Badge>
             <h3>{item.action}</h3>
-            <p>{item.detail}</p>
+            <p>{item.evidence_summary}</p>
           </div>
           <div className="summary-pairs">
-            <div><small>Requested by</small><strong>{item.requester}</strong></div>
-            <div><small>Risk level</small><StatusBadge status={item.risk} /></div>
-            <div><small>Request age</small><strong>{item.age}</strong></div>
+            <div><small>Requested by</small><strong>{item.requester_name}</strong></div>
+            <div><small>Risk level</small><StatusBadge status={item.risk_level === 'HIGH' ? 'High' : 'Medium'} /></div>
+            <div><small>Associated Task</small><span className="mono link-text">{item.task_id}</span></div>
             <div><small>Policy decision</small><strong className="text-amber">REQUIRE_APPROVAL</strong></div>
           </div>
           <Panel title="Evidence references">
@@ -1140,14 +1361,20 @@ export function ApprovalQueuePage() {
             <div className="reference-row">TEL-P204-0918 · Vibration telemetry <StatusBadge status="Verified" /></div>
             <div className="reference-row">SOP-MNT-014 · Procedure revision 3.2 <StatusBadge status="Verified" /></div>
           </Panel>
-          <InlineAlert tone="warning" title="Separation of duties enforced">
-            The requester cannot approve their own proposed action. The active demo principal is Ravi Kumar · Supervisor.
+          <InlineAlert tone={canApprove && !isAlreadyDecided ? 'info' : 'warning'} title="Separation of duties enforced">
+            {disabledReason || `Active identity: ${principal.display_name} (${principal.roles.join(', ')}). Authorized to review.`}
           </InlineAlert>
-          <ApprovalDecisionBar onDecision={setDecision} />
-          {decision && (
-            <InlineAlert tone="success" title={`Request ${decision.toLowerCase()} (demo state)`}>
-              The decision has been recorded in this local UI demonstration. No external operation was executed.
-            </InlineAlert>
+          <ApprovalDecisionBar
+            onDecision={handleDecision}
+            disabled={!canApprove || isAlreadyDecided}
+            disabledReason={disabledReason}
+          />
+          {feedback && (
+            <div style={{ marginTop: '12px' }}>
+              <InlineAlert tone={feedback.tone} title="Approval Action Outcome">
+                {feedback.message}
+              </InlineAlert>
+            </div>
           )}
         </Panel>
       </div>
@@ -1157,7 +1384,26 @@ export function ApprovalQueuePage() {
 
 export function AuditEventTable() {
   const [query, setQuery] = useState('');
-  const rows = demoAuditEvents.filter(e => `${e.type} ${e.actor} ${e.target} ${e.trace}`.toLowerCase().includes(query.toLowerCase()));
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getAuditEvents().then((evs) => {
+      if (isMounted) setEvents(evs);
+    }).catch(console.error);
+    return () => { isMounted = false; };
+  }, []);
+
+  const rows = useMemo(() => {
+    return events
+      .filter(e => `${e.event_type} ${e.principal_id} ${e.action} ${e.trace_id}`.toLowerCase().includes(query.toLowerCase()))
+      .map(e => ({
+        ...e,
+        timeStr: new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        traceShort: e.trace_id.substring(0, 14),
+      } as Record<string, unknown>));
+  }, [events, query]);
+
   return (
     <>
       <div className="toolbar-row">
@@ -1166,17 +1412,17 @@ export function AuditEventTable() {
         <FilterChip>All outcomes</FilterChip>
         <Button><Download size={14} /> Export</Button>
       </div>
-      <Panel title="Event log" subtitle={`${rows.length} events · Sample audit stream`}>
+      <Panel title="Event log" subtitle={`${rows.length} events · Cryptographic runtime audit trail`}>
         <DataTable
           rows={rows}
-          rowKey="time"
+          rowKey="event_id"
           columns={[
-            { key: 'time', label: 'Time', render: r => <span className="mono">{r.time}</span> },
-            { key: 'type', label: 'Event type', render: r => <strong className="event-type">{r.type}</strong> },
-            { key: 'actor', label: 'Actor' },
-            { key: 'target', label: 'Target', render: r => <span className="mono">{r.target}</span> },
-            { key: 'outcome', label: 'Outcome', render: r => <StatusBadge status={r.outcome} /> },
-            { key: 'trace', label: 'Trace ID', render: r => <span className="mono link-text">{r.trace}</span> }
+            { key: 'timestamp', label: 'Time', render: r => <span className="mono">{String(r.timeStr)}</span> },
+            { key: 'event_type', label: 'Event type', render: r => <strong className="event-type">{String(r.event_type)}</strong> },
+            { key: 'principal_id', label: 'Actor', render: r => <span className="mono">{String(r.principal_id)}</span> },
+            { key: 'action', label: 'Action / Target', render: r => <span>{String(r.action)}</span> },
+            { key: 'status', label: 'Outcome', render: r => <StatusBadge status={r.status === 'SUCCESS' ? 'Success' : r.status === 'DENIED' ? 'Blocked' : 'Needs review'} /> },
+            { key: 'trace_id', label: 'Trace ID', render: r => <span className="mono link-text">{String(r.traceShort)}</span> }
           ]}
         />
       </Panel>

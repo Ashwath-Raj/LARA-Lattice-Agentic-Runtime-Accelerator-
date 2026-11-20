@@ -165,17 +165,17 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
             <div className="header-pop-wrap">
               <button
                 className="identity-button"
-                aria-label={`Switch demo principal: ${activeName} (${activeRole})`}
+                aria-label={`${activeName} (${activeRole}) - Switch demo principal`}
                 aria-haspopup="menu"
                 aria-expanded={userMenu}
                 onClick={() => setUserMenu(v => !v)}
               >
-                <span className="identity-avatar">{initials}</span>
+                <span className="identity-avatar" aria-hidden="true">{initials}</span>
                 <span className="identity-copy">
                   <b>{activeName}</b>
                   <small>{activeRole}</small>
                 </span>
-                <ChevronDown size={14} />
+                <ChevronDown size={14} aria-hidden="true" />
               </button>
               {userMenu && (
                 <div className="popover-menu identity-menu" role="menu">

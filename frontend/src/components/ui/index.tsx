@@ -17,8 +17,8 @@ export function StatusBadge({ status }: { status: string }) {
   return <Badge tone={tone} dot>{status}</Badge>;
 }
 export function EnvironmentBadge() { return <span className="environment-badge"><span/> SYNTHETIC DEMO ENVIRONMENT</span>; }
-export function TextField({ label, value, onChange, placeholder, type = 'text', hint }: { label?: string; value?: string; onChange?: (v:string)=>void; placeholder?: string; type?: string; hint?: string }) {
-  return <label className="field">{label && <span className="field-label">{label}</span>}<input value={value} onChange={e=>onChange?.(e.target.value)} type={type} placeholder={placeholder}/>{hint && <small>{hint}</small>}</label>;
+export function TextField({ label, value, onChange, placeholder, type = 'text', hint, disabled }: { label?: string; value?: string; onChange?: (v:string)=>void; placeholder?: string; type?: string; hint?: string; disabled?: boolean }) {
+  return <label className="field">{label && <span className="field-label">{label}</span>}<input value={value} onChange={e=>onChange?.(e.target.value)} type={type} placeholder={placeholder} disabled={disabled}/>{hint && <small>{hint}</small>}</label>;
 }
 export function SearchField({ value, onChange, placeholder = 'Search' }: { value:string; onChange:(v:string)=>void; placeholder?:string }) {
   return <div className="search-field"><Search size={16}/><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/>{value && <button aria-label="Clear search" onClick={()=>onChange('')}><X size={14}/></button>}</div>;

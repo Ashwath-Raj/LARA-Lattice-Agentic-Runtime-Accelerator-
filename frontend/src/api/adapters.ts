@@ -380,14 +380,18 @@ export function adaptAuditEvent(raw: unknown): AuditEvent {
 
 /**
  * Adapt SystemHealth
+ * Accurately maps backend readiness without inferring unverified cloud dependencies.
  */
 export function adaptHealthResponse(raw: unknown, currentPrincipal: Principal | null = null): SystemHealth {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const rawStatus = String(r.status || 'unknown').toLowerCase();
+  const isHealthy = rawStatus === 'ready' || rawStatus === 'alive' || rawStatus === 'ok' || rawStatus === 'healthy';
+
   return {
-    status: r.status === 'degraded' ? 'DEGRADED' : r.status === 'error' ? 'ERROR' : 'HEALTHY',
-    firestore: r.firestore === 'connected' ? 'CONNECTED' : 'CONNECTED',
-    vertex_ai: r.vertex_ai === 'ready' ? 'READY' : 'READY',
+    status: isHealthy ? 'HEALTHY' : rawStatus === 'degraded' ? 'DEGRADED' : 'ERROR',
+    firestore: r.firestore === 'connected' ? 'CONNECTED' : r.firestore === 'disconnected' ? 'DISCONNECTED' : 'UNCHECKED',
+    vertex_ai: r.vertex_ai === 'ready' ? 'READY' : r.vertex_ai === 'unavailable' ? 'UNAVAILABLE' : 'UNCHECKED',
     session_principal: currentPrincipal,
-    version: String(r.version || '2.0.0-gcp-only'),
+    version: String(r.version || 'unreported by backend /ready'),
   };
 }

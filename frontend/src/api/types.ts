@@ -266,8 +266,8 @@ export interface AuditEvent {
 
 export interface SystemHealth {
   status: 'HEALTHY' | 'DEGRADED' | 'ERROR';
-  firestore: 'CONNECTED' | 'DISCONNECTED';
-  vertex_ai: 'READY' | 'UNAVAILABLE';
+  firestore: 'CONNECTED' | 'DISCONNECTED' | 'UNCHECKED';
+  vertex_ai: 'READY' | 'UNAVAILABLE' | 'UNCHECKED';
   session_principal: Principal | null;
   version: string;
 }

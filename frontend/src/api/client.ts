@@ -766,7 +766,14 @@ export class LaraApiClient {
         if (filter?.taskId) params.task_id = filter.taskId;
         if (filter?.principalId) params.principal_id = filter.principalId;
 
-        const res = await httpFetch<unknown[]>('/audit/events', { params });
+        // Try primary backend route /audit first, fallback to /audit/events
+        let res: unknown[];
+        try {
+          res = await httpFetch<unknown[]>('/audit', { params });
+        } catch {
+          res = await httpFetch<unknown[]>('/audit/events', { params });
+        }
+
         if (Array.isArray(res)) {
           return res.map(adaptAuditEvent);
         }

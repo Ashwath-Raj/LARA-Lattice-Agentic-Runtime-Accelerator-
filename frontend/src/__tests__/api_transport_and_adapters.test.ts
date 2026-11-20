@@ -314,4 +314,54 @@ describe('LARA Response Adapters', () => {
     expect(adapted.evaluation_results.length).toBe(1);
     expect(adapted.evaluation_results[0].status).toBe('PASSED');
   });
+
+  it('adapts TaskEvents, PolicyDecision, ApprovalItem, AuditEvent, and HealthResponse', () => {
+    const rawEvents = [
+      { event_id: 'ev_1', task_id: 't_1', trace_id: 'tr_1', type: 'INTAKE', stage: 'INTAKE', summary: 'Intake step' },
+    ];
+    const events = adaptTaskEvents(rawEvents);
+    expect(events.length).toBe(1);
+    expect(events[0].event_id).toBe('ev_1');
+
+    const rawPolicy = {
+      decision: 'REQUIRE_APPROVAL',
+      reason_code: 'SUPERVISOR_APPROVAL_REQUIRED',
+      policy_id: 'pol_1',
+      evaluated_at: '2026-11-20T12:00:00Z',
+    };
+    const policy = adaptPolicyDecisionResponse(rawPolicy);
+    expect(policy.decision).toBe('REQUIRE_APPROVAL');
+
+    const rawApproval = {
+      approval_id: 'appr_1',
+      task_id: 't_1',
+      trace_id: 'tr_1',
+      requester_id: 'usr_operator_01',
+      requester_name: 'Maya Operator',
+      action: 'Dispatch maintenance',
+      tool_name: 'tool:maintenance',
+      risk_level: 'HIGH',
+      status: 'PENDING',
+    };
+    const approval = adaptApprovalResponse(rawApproval);
+    expect(approval.approval_id).toBe('appr_1');
+    expect(approval.status).toBe('PENDING');
+
+    const rawAudit = {
+      event_id: 'evt_1',
+      timestamp: '2026-11-20T12:00:00Z',
+      principal_id: 'usr_operator_01',
+      trace_id: 'trc_1',
+      event_type: 'TASK_CREATED',
+      action: 'Create task',
+      status: 'SUCCESS',
+    };
+    const audit = adaptAuditEvent(rawAudit);
+    expect(audit.event_id).toBe('evt_1');
+
+    const rawHealth = { status: 'ok', version: '2.0.0-gcp-only' };
+    const health = adaptHealthResponse(rawHealth);
+    expect(health.status).toBe('HEALTHY');
+    expect(health.version).toBe('2.0.0-gcp-only');
+  });
 });

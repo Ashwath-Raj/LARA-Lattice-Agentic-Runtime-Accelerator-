@@ -12,16 +12,8 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
         "nodes": [
           {
-            "html": "<small>Operations workspace</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7a8493, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<div class=\"nav-group-title\">Workspace</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span>Overview</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.99 (foreground color: #1a73e8, background color: #eaf2fe, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
             "html": "<b>12</b>",
@@ -38,10 +30,6 @@
           {
             "html": "<div class=\"nav-group-title\">Observability</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small><span class=\"status-pulse\"></span> All systems operational</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7a8493, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
             "html": "<kbd>Enter</kbd>",
@@ -188,11 +176,7 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.67 (foreground color: #778496, background color: #fafbfd, font size: 6.8pt (9px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Line 2</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant East · Utilities</small>",
+            "html": "<small>Plant North · Live Runtime Session</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -200,51 +184,15 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Powerhouse</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Medium</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant South · Packaging</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Low</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-green\"><i></i>Resolved</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.48 (foreground color: #188038, background color: #eaf5ed, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<p>Actions waiting for a decision</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #8490a0, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<p>INC-204 · Compressor P-204</p>",
+            "html": "<p>task_demo_inc204 · tool:maintenance-request</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Requested 8 minutes ago</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>INC-198 · Vendor report revision</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>1 source needs review</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>Verification Agent · Evolution</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>4 evaluation checks passed</small>",
+            "html": "<small>Requester: Maya Operator</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -304,7 +252,7 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
         "nodes": [
           {
-            "html": "<button class=\"identity-button\" aria-label=\"Switch demo principal: Maya Operator (Operator)\">",
+            "html": "<button class=\"identity-button\" aria-label=\"Maya Operator (Operator) - Switch demo principal\" aria-haspopup=\"menu\" aria-expanded=\"false\">",
             "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
           }
         ]
@@ -461,11 +409,7 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.67 (foreground color: #778496, background color: #fafbfd, font size: 6.8pt (9px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Line 2</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant East · Utilities</small>",
+            "html": "<small>Plant North · Live Runtime Session</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -473,51 +417,15 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Powerhouse</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Medium</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant South · Packaging</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Low</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-green\"><i></i>Resolved</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.48 (foreground color: #188038, background color: #eaf5ed, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<p>Actions waiting for a decision</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #8490a0, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<p>INC-204 · Compressor P-204</p>",
+            "html": "<p>task_demo_inc204 · tool:maintenance-request</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Requested 8 minutes ago</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>INC-198 · Vendor report revision</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>1 source needs review</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>Verification Agent · Evolution</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>4 evaluation checks passed</small>",
+            "html": "<small>Requester: Maya Operator</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -573,7 +481,7 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
         "nodes": [
           {
-            "html": "<button class=\"identity-button\" aria-label=\"Switch demo principal: Maya Operator (Operator)\">",
+            "html": "<button class=\"identity-button\" aria-label=\"Maya Operator (Operator) - Switch demo principal\" aria-haspopup=\"menu\" aria-expanded=\"false\">",
             "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
           }
         ]
@@ -581,26 +489,14 @@
     ],
     "touchTargetSummary": {
       "totalInteractive": 34,
-      "sub36Count": 14,
-      "sub44Count": 12,
+      "sub36Count": 12,
+      "sub44Count": 13,
       "smallElements": [
-        {
-          "tag": "BUTTON",
-          "text": "",
-          "w": 34,
-          "h": 34
-        },
         {
           "tag": "INPUT",
           "text": "",
           "w": 234.234375,
           "h": 16
-        },
-        {
-          "tag": "BUTTON",
-          "text": "",
-          "w": 31,
-          "h": 36
         },
         {
           "tag": "INPUT",
@@ -613,6 +509,18 @@
           "text": "",
           "w": 34,
           "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "w": 34,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View all",
+          "w": 80.8125,
+          "h": 30
         }
       ]
     }
@@ -630,10 +538,6 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
         "nodes": [
           {
-            "html": "<small>Operations workspace</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7a8493, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<div class=\"nav-group-title\">Workspace</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
@@ -646,20 +550,12 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<span>Information Highways</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.99 (foreground color: #1a73e8, background color: #eaf2fe, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<div class=\"nav-group-title\">Policy &amp; Control</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
           {
             "html": "<div class=\"nav-group-title\">Observability</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small><span class=\"status-pulse\"></span> All systems operational</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7a8493, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
             "html": "<kbd>Enter</kbd>",
@@ -770,15 +666,7 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #8490a0, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>POLICY_DENIED</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.77 (foreground color: #929cab, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>SEPARATION_OF_DUTIES</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.77 (foreground color: #929cab, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>HARD_BOUNDARY</small>",
+            "html": "<small>All evaluated candidates permitted for this role</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.77 (foreground color: #929cab, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -798,7 +686,7 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
         "nodes": [
           {
-            "html": "<button class=\"identity-button\" aria-label=\"Switch demo principal: Maya Operator (Operator)\">",
+            "html": "<button class=\"identity-button\" aria-label=\"Maya Operator (Operator) - Switch demo principal\" aria-haspopup=\"menu\" aria-expanded=\"false\">",
             "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
           },
           {
@@ -943,15 +831,7 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #8490a0, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>POLICY_DENIED</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.77 (foreground color: #929cab, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>SEPARATION_OF_DUTIES</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.77 (foreground color: #929cab, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>HARD_BOUNDARY</small>",
+            "html": "<small>All evaluated candidates permitted for this role</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.77 (foreground color: #929cab, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -967,7 +847,7 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
         "nodes": [
           {
-            "html": "<button class=\"identity-button\" aria-label=\"Switch demo principal: Maya Operator (Operator)\">",
+            "html": "<button class=\"identity-button\" aria-label=\"Maya Operator (Operator) - Switch demo principal\" aria-haspopup=\"menu\" aria-expanded=\"false\">",
             "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
           },
           {
@@ -987,26 +867,14 @@
     ],
     "touchTargetSummary": {
       "totalInteractive": 31,
-      "sub36Count": 12,
-      "sub44Count": 11,
+      "sub36Count": 10,
+      "sub44Count": 12,
       "smallElements": [
-        {
-          "tag": "BUTTON",
-          "text": "",
-          "w": 34,
-          "h": 34
-        },
         {
           "tag": "INPUT",
           "text": "",
           "w": 234.234375,
           "h": 16
-        },
-        {
-          "tag": "BUTTON",
-          "text": "",
-          "w": 31,
-          "h": 36
         },
         {
           "tag": "INPUT",
@@ -1019,6 +887,18 @@
           "text": "",
           "w": 34,
           "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "w": 34,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "text": "Graph",
+          "w": 51.484375,
+          "h": 27
         }
       ]
     }
@@ -1036,16 +916,8 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/color-contrast?application=axeAPI",
         "nodes": [
           {
-            "html": "<small>Operations workspace</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7a8493, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<div class=\"nav-group-title\">Workspace</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span>Overview</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.99 (foreground color: #1a73e8, background color: #eaf2fe, font size: 9.0pt (12px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
             "html": "<b>12</b>",
@@ -1062,10 +934,6 @@
           {
             "html": "<div class=\"nav-group-title\">Observability</div>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.1 (foreground color: #8993a2, background color: #ffffff, font size: 7.5pt (10px), font weight: bold). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small><span class=\"status-pulse\"></span> All systems operational</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.78 (foreground color: #7a8493, background color: #ffffff, font size: 7.5pt (10px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
             "html": "<div class=\"environment-line\"><span></span> DEMO WORKSPACE <span class=\"line-separator\">·</span> Sample industrial operations data</div>",
@@ -1204,11 +1072,7 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.67 (foreground color: #778496, background color: #fafbfd, font size: 6.8pt (9px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Line 2</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant East · Utilities</small>",
+            "html": "<small>Plant North · Live Runtime Session</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -1216,51 +1080,15 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Powerhouse</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Medium</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant South · Packaging</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Low</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-green\"><i></i>Resolved</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.48 (foreground color: #188038, background color: #eaf5ed, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<p>Actions waiting for a decision</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #8490a0, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<p>INC-204 · Compressor P-204</p>",
+            "html": "<p>task_demo_inc204 · tool:maintenance-request</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Requested 8 minutes ago</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>INC-198 · Vendor report revision</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>1 source needs review</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>Verification Agent · Evolution</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>4 evaluation checks passed</small>",
+            "html": "<small>Requester: Maya Operator</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -1316,7 +1144,7 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
         "nodes": [
           {
-            "html": "<button class=\"identity-button\" aria-label=\"Switch demo principal: Maya Operator (Operator)\">",
+            "html": "<button class=\"identity-button\" aria-label=\"Maya Operator (Operator) - Switch demo principal\" aria-haspopup=\"menu\" aria-expanded=\"false\">",
             "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
           }
         ]
@@ -1324,26 +1152,14 @@
     ],
     "touchTargetSummary": {
       "totalInteractive": 35,
-      "sub36Count": 14,
-      "sub44Count": 12,
+      "sub36Count": 12,
+      "sub44Count": 13,
       "smallElements": [
-        {
-          "tag": "BUTTON",
-          "text": "",
-          "w": 34,
-          "h": 34
-        },
         {
           "tag": "INPUT",
           "text": "",
           "w": 234.234375,
           "h": 16
-        },
-        {
-          "tag": "BUTTON",
-          "text": "",
-          "w": 31,
-          "h": 36
         },
         {
           "tag": "INPUT",
@@ -1356,6 +1172,18 @@
           "text": "",
           "w": 34,
           "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "text": "",
+          "w": 34,
+          "h": 34
+        },
+        {
+          "tag": "BUTTON",
+          "text": "View all",
+          "w": 80.8125,
+          "h": 30
         }
       ]
     }
@@ -1517,11 +1345,7 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.67 (foreground color: #778496, background color: #fafbfd, font size: 6.8pt (9px), font weight: bold). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Line 2</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant East · Utilities</small>",
+            "html": "<small>Plant North · Live Runtime Session</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -1529,51 +1353,15 @@
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Plant North · Powerhouse</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Medium</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>Plant South · Packaging</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.07 (foreground color: #8994a3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-neutral\"><i></i>Low</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.38 (foreground color: #657286, background color: #f0f3f7, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<span class=\"badge badge-green\"><i></i>Resolved</span>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 4.48 (foreground color: #188038, background color: #eaf5ed, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
             "html": "<p>Actions waiting for a decision</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.24 (foreground color: #8490a0, background color: #ffffff, font size: 7.9pt (10.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<p>INC-204 · Compressor P-204</p>",
+            "html": "<p>task_demo_inc204 · tool:maintenance-request</p>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
-            "html": "<small>Requested 8 minutes ago</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>INC-198 · Vendor report revision</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>1 source needs review</small>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<p>Verification Agent · Evolution</p>",
-            "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 3.8 (foreground color: #778496, background color: #ffffff, font size: 7.1pt (9.5px), font weight: normal). Expected contrast ratio of 4.5:1"
-          },
-          {
-            "html": "<small>4 evaluation checks passed</small>",
+            "html": "<small>Requester: Maya Operator</small>",
             "failureSummary": "Fix any of the following:\n  Element has insufficient color contrast of 2.4 (foreground color: #a0a8b3, background color: #ffffff, font size: 6.8pt (9px), font weight: normal). Expected contrast ratio of 4.5:1"
           },
           {
@@ -1641,7 +1429,7 @@
         "helpUrl": "https://dequeuniversity.com/rules/axe/4.14/label-content-name-mismatch?application=axeAPI",
         "nodes": [
           {
-            "html": "<button class=\"identity-button\" aria-label=\"Switch demo principal: Maya Operator (Operator)\">",
+            "html": "<button class=\"identity-button\" aria-label=\"Maya Operator (Operator) - Switch demo principal\" aria-haspopup=\"menu\" aria-expanded=\"false\">",
             "failureSummary": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
           }
         ]
@@ -1650,7 +1438,7 @@
     "touchTargetSummary": null
   },
   "_metadata": {
-    "auditedAt": "2026-11-20T11:22:13.898Z",
+    "auditedAt": "2026-11-20T17:49:08.320Z",
     "tool": "axe-core 4.x via Puppeteer Headless Chrome",
     "reducedMotionSupported": true
   }
