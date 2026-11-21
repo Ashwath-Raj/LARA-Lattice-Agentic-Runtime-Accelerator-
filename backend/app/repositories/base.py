@@ -30,6 +30,10 @@ class InMemoryRepository(BaseRepository):
         self.load_synthetic_fixtures()
 
     def load_synthetic_fixtures(self):
+        from backend.app.core.config import settings
+        if settings.ENVIRONMENT.lower() in ["production", "prod"]:
+            raise RuntimeError("Production safety violation: Synthetic fixtures must NEVER be loaded into a production environment!")
+
         # Load synthetic users
         users_file = ROOT / "data" / "synthetic" / "users.json"
         if users_file.exists():

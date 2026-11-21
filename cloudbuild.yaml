@@ -17,7 +17,7 @@ substitutions:
   _FIRESTORE_DB: (default)
 
 # Enforce user-managed least-privilege service account for Cloud Build execution
-# (Requires roles/logging.logWriter, roles/artifactregistry.writer, roles/run.developer, and roles/iam.serviceAccountUser on _RUNTIME_SA)
+# (Requires roles/storage.objectViewer, roles/logging.logWriter, roles/artifactregistry.writer, roles/run.developer, and roles/iam.serviceAccountUser on _RUNTIME_SA)
 serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/${_BUILD_SA}'
 
 options:

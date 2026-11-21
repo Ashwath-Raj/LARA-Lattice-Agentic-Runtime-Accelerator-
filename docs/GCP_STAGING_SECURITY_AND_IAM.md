@@ -21,7 +21,26 @@ LARA strictly disallows granting broad `Owner` or `Editor` roles to automated se
                  ├──> roles/secretmanager.secretAccessor (lara-secret-key, lara-goboxd-token only)
                  ├──> roles/logging.logWriter (Cloud Logging structured event emitter)
                  └──> roles/monitoring.metricWriter (Cloud Monitoring custom telemetry)
+
+┌─────────────────────────────────┐
+│     Cloud Build Pipeline SA     │
+│   lara-build-sa@${PROJECT_ID}   │
+└────────────────┬────────────────┘
+                 │
+                 ├──> roles/storage.objectViewer (Cloud Build source staging bucket)
+                 ├──> roles/artifactregistry.writer (Push container images to Artifact Registry)
+                 ├──> roles/run.developer (Deploy Cloud Run revisions)
+                 ├──> roles/iam.serviceAccountUser (Scoped specifically to lara-runtime-sa)
+                 └──> roles/logging.logWriter (Emit Cloud Build execution logs)
 ```
+
+### Submitting User IAM Requirement
+The human deployer or CI initiator submitting `gcloud builds submit` requires:
+- `roles/cloudbuild.builds.editor` (to queue builds)
+- `roles/iam.serviceAccountUser` on `lara-build-sa` (the `iam.serviceAccounts.actAs` permission required to submit builds that specify a custom service account)
+
+> [!NOTE]
+> `cloudbuild.yaml` natively specifies `serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/${_BUILD_SA}'`. Deployers do not use `--impersonate-service-account`.
 
 ### Prohibited IAM Patterns
 - **No Service Account Keys:** No `.json` service account keys may be baked into Docker images or uploaded to the repository. Authentication relies on Google Application Default Credentials (ADC) and Cloud Run Workload Identity.
@@ -61,25 +80,28 @@ LARA strictly disallows granting broad `Owner` or `Editor` roles to automated se
 ## 4. Isolated Sandbox Execution Boundary (goboxd / nsjail)
 
 ```
-┌─────────────────────────┐               Private Subnet (VPC)               ┌─────────────────────────┐
-│   Cloud Run Container   │ ───────────────────────────────────────────────> │    Compute Engine VM    │
-│  (Untrusted Code Client)│  Unencrypted Internal HTTP (Port 8081)           │     (goboxd Daemon)     │
-└─────────────────────────┘  [VPC Link Encryption Only; No App-layer TLS]    └────────────┬────────────┘
-                             Auth: Bearer ${GOBOXD_INTERNAL_AUTH_TOKEN}                   │
-                                                                                          ▼
-                                                                             ┌─────────────────────────┐
-                                                                             │     nsjail Sandbox      │
-                                                                             │  - cgroup v2 (128MB)    │
-                                                                             │  - Wall-clock (10s)     │
-                                                                             │  - Network isolated     │
-                                                                             │  - No cloud credentials │
-                                                                             └─────────────────────────┘
+┌─────────────────────────┐         Private Subnet (lara-vpc)         ┌─────────────────────────┐
+│   Cloud Run Container   │ ────────────────────────────────────────> │    Compute Engine VM    │
+│  (Untrusted Code Client)│  Internal HTTP / TLS (Port 8081/8443)     │     (goboxd Daemon)     │
+└─────────────────────────┘  [VPC Link Encryption Only; mTLS req.]    └────────────┬────────────┘
+                             Auth: Bearer ${GOBOXD_INTERNAL_AUTH_TOKEN}            │
+                                                                                   ▼
+                                                                      ┌─────────────────────────┐
+                                                                      │     nsjail Sandbox      │
+                                                                      │  - cgroup v2 (1024MB)   │
+                                                                      │  - Wall-clock (10s)     │
+                                                                      │  - Network isolated     │
+                                                                      │  - No cloud credentials │
+                                                                      └─────────────────────────┘
 ```
 
 ### 4.1 Transport & Networking Truth Audit
-- **No Application-Layer Encryption:** Transport between Cloud Run and goboxd VM is plain HTTP. While Google Cloud provides physical network link encryption between GCE data center hosts, this does NOT provide application-layer TLS. The bearer token travels as plaintext within the VPC network.
-- **Remaining TLS / mTLS Requirement:** Before sandbox activation in production, TLS termination (via Nginx or Caddy with an internal CA certificate on port 8443) must be configured on the GCE VM to protect the internal authorization token.
-- **VPC Egress Path:** Cloud Run requires an explicit Direct VPC Egress binding (`--network=... --subnet=... --vpc-egress=private-ranges-only`) or a Serverless VPC Access connector to reach private RFC1918 internal IPs.
-- **Firewall Restriction:** The GCE VM firewall must strictly restrict ingress to port 8081/8443 from the Cloud Run egress subnet only. Target tag: `goboxd-sandbox`.
+- **No Application-Layer Encryption by Default:** Transport between Cloud Run and goboxd VM is plain HTTP over port 8081. While Google Cloud provides physical network link encryption between GCE data center hosts, this does NOT provide application-layer TLS. The bearer token travels unencrypted within the VPC network.
+- **TLS / mTLS Prerequisite:** Before sandbox activation in production, TLS termination (via an NGINX or Envoy reverse proxy with an internal CA certificate on port 8443) must be configured on the GCE VM with client certificate verification (mTLS) to protect the internal authorization token.
+- **Unified VPC Network Topology:**
+  - Network: `lara-vpc`
+  - Subnet: `lara-private-subnet`
+  - Cloud Run Egress: Direct VPC Egress (`--network=lara-vpc --subnet=lara-private-subnet --vpc-egress=private-ranges-only`).
+- **Firewall Restriction:** The GCE VM firewall strictly restricts ingress to port 8081/8443 from the Cloud Run subnet CIDR only (`${CLOUDRUN_SUBNET_CIDR}`). Target tag: `goboxd-sandbox`.
 - **Zero Cloud Credentials:** The sandbox VM receives no GCP service account credentials or Firestore tokens.
-- **Fail-Closed Kill-Switch:** `GOBOXD_KILL_SWITCH=true` is enforced in all production settings models. If the sandbox is unreachable or the kill-switch is active, all tool gateway execution calls fail closed with `SANDBOX_UNAVAILABLE` and emit an audit event. Untrusted code is NEVER executed in Cloud Run or locally.
+- **Fail-Closed Kill-Switch:** `GOBOXD_KILL_SWITCH=true` is enforced in all production settings models. If the sandbox is unreachable or the kill-switch is active, all tool gateway execution calls fail closed with `PolicyDeniedError` (code `KILL_SWITCH_ACTIVE`) and emit an audit event. Untrusted code is NEVER executed in Cloud Run or locally.

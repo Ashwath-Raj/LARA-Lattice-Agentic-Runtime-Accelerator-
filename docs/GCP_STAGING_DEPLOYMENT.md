@@ -1,45 +1,46 @@
 # LARA — Google Cloud Staging Deployment Runbook
 
-**Environment:** Google Cloud Platform (GCP) Staging  
-**Architecture:** Single-Origin Cloud Run Service + Firestore Native + GCS + Vertex AI + goboxd GCE VM  
-**Target Branch:** `integrate/lara-gcp-staging`  
-
-> [!IMPORTANT]
-> This runbook is strictly parameterized for the **authenticated user's own GCP project**. Never deploy staging resources to developer development projects (such as `lara-runtime-ashwath-2026`).
+**Environment Target:** Google Cloud Platform (User-Owned Staging Project)<br>
+**Execution Pipeline:** Google Cloud Build (`cloudbuild.yaml`)<br>
+**Container Host:** Google Cloud Run (Fully Managed, Single-Origin React SPA + FastAPI Runtime)<br>
+**Security Level:** Least-Privilege IAM, User-Managed Service Accounts, Secret Manager Bindings, Fail-Closed
 
 ---
 
-## 1. Prerequisites & Discovery Verification
+## 1. Pre-Deployment Configuration & Parameter Variables
 
-Before initiating deployment, verify your local environment and GCP account:
+Before executing commands, define the target Google Cloud environment variables. All values must be supplied by the deployer.
 
 ```bash
-# 1. Verify gcloud is installed and authenticated
-gcloud auth list
-gcloud config get-value project
-
-# 2. Confirm billing is active on your project
-gcloud billing projects describe "$(gcloud config get-value project)"
-
-# 3. Export target configuration variables
-export PROJECT_ID="$(gcloud config get-value project)"
-export REGION="asia-south1"                  # Primary region for Cloud Run, GCS, Firestore
-export VERTEX_LOCATION="global"              # Supported location for gemini-3.8-flash
-export VERTEX_MODEL="gemini-3.8-flash"       # Active replacement for retired gemini-2.5-flash
+# Core GCP Environment Settings
+export PROJECT_ID="<your-gcp-project-id>"
+export REGION="asia-south1"
 export SERVICE_NAME="lara-runtime-staging"
 export REPO_NAME="lara-staging-repo"
 export BUCKET_NAME="${PROJECT_ID}-lara-assets"
 export FIRESTORE_DB="(default)"
+
+# Service Account Identifiers
 export RUNTIME_SA="lara-runtime-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 export BUILD_SA="lara-build-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# Model Lifecycle & Vertex AI Location
+# Note: gemini-2.5-flash retired Oct 20, 2026. Candidate: gemini-3.8-flash.
+# Serving location: global (multi-region processing) or approved regional endpoint.
+export VERTEX_LOCATION="global"
+export VERTEX_MODEL="gemini-3.8-flash"
+
+# Network Topology (Must match organizational IPAM plan)
+export VPC_NAME="lara-vpc"
+export PRIVATE_SUBNET_NAME="lara-private-subnet"
+export CLOUDRUN_SUBNET_CIDR="<your-cloudrun-subnet-cidr>"  # e.g., allocated per VPC subnet plan
 ```
 
 ---
 
-## 2. Infrastructure Provisioning Steps
+## 2. Infrastructure Provisioning & Security IAM Setup
 
-### Step 2.1 — Enable Mandatory Google Cloud APIs
-Enable only the services required by LARA:
+### Step 2.1 — Enable Required Google Cloud APIs
 ```bash
 gcloud services enable \
   run.googleapis.com \
@@ -121,11 +122,16 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
 ```
 
 #### B. Cloud Build Service Account (`lara-build-sa`)
-Cloud Build pipeline executes under this dedicated identity (instead of the legacy default identity):
+Cloud Build pipeline executes under this dedicated identity (instead of the legacy project-wide default identity):
 ```bash
 gcloud iam service-accounts create lara-build-sa \
   --display-name="LARA Cloud Build Pipeline Service Account" \
   --project="${PROJECT_ID}"
+
+# Source download permission on Cloud Build staging storage
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:${BUILD_SA}" \
+  --role="roles/storage.objectViewer"
 
 # Allow Cloud Build to write build logs
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
@@ -139,26 +145,24 @@ gcloud artifacts repositories add-iam-policy-binding "${REPO_NAME}" \
   --role="roles/artifactregistry.writer" \
   --project="${PROJECT_ID}"
 
-# Allow Cloud Build to deploy Cloud Run revisions
+# Allow Cloud Build to deploy Cloud Run service revisions
 gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:${BUILD_SA}" \
   --role="roles/run.developer"
 
-# Allow Cloud Build to act as the runtime service account when deploying Cloud Run
+# Allow Cloud Build to bind/actAs the runtime service account when deploying Cloud Run
 gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
   --member="serviceAccount:${BUILD_SA}" \
   --role="roles/iam.serviceAccountUser" \
   --project="${PROJECT_ID}"
 ```
 
-#### C. Human Deployer Permissions (Submitting User)
-The developer or CI pipeline principal submitting `gcloud builds submit` requires:
-- `roles/cloudbuild.builds.editor` (to queue builds)
-- `roles/iam.serviceAccountUser` on `lara-build-sa` (to impersonate the build service account)
-- `roles/viewer` (to inspect deployment status)
+#### C. Submitting User Permissions
+The developer or CI caller submitting `gcloud builds submit` requires:
+- `roles/cloudbuild.builds.editor` (to submit and monitor builds)
+- `roles/iam.serviceAccountUser` on `lara-build-sa` (the `iam.serviceAccounts.actAs` permission required to submit builds that specify a custom service account)
 
 ```bash
-# Example for deployer principal:
 export DEPLOYER_USER="$(gcloud config get-value account)"
 gcloud iam service-accounts add-iam-policy-binding "${BUILD_SA}" \
   --member="user:${DEPLOYER_USER}" \
@@ -166,14 +170,17 @@ gcloud iam service-accounts add-iam-policy-binding "${BUILD_SA}" \
   --project="${PROJECT_ID}"
 ```
 
+> [!NOTE]
+> Do NOT use the `--impersonate-service-account` flag when submitting builds. `cloudbuild.yaml` directly specifies `serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/${_BUILD_SA}'`. Cloud Build natively executes the build under that identity once the submitting user has `iam.serviceAccountUser` on `lara-build-sa`.
+
 ### Step 2.6 — Configure Secret Manager Secrets
-Generate cryptographically strong random secrets and store in Secret Manager:
+Store cryptographically secure values in Secret Manager:
 ```bash
-# 1. Generate 32+ character session key
+# 1. Session secret key (minimum 32 characters)
 SECRET_KEY_VAL=$(openssl rand -hex 32)
 echo -n "${SECRET_KEY_VAL}" | gcloud secrets create lara-secret-key --data-file=- --project="${PROJECT_ID}"
 
-# 2. Generate internal goboxd auth token
+# 2. Internal goboxd auth token (minimum 16 characters)
 GOBOXD_TOKEN_VAL=$(openssl rand -hex 32)
 echo -n "${GOBOXD_TOKEN_VAL}" | gcloud secrets create lara-goboxd-token --data-file=- --project="${PROJECT_ID}"
 
@@ -191,30 +198,55 @@ gcloud secrets add-iam-policy-binding lara-goboxd-token \
 
 ---
 
-## 3. goboxd / nsjail Sandbox Networking & Transport Requirements
+## 3. Initial Principal Bootstrap (Secure Administrative Provisioning)
 
-> [!CAUTION]
-> The sandbox daemon operates on plain HTTP over port 8081 by default. While VPC traffic is link-encrypted within Google Cloud data centers, HTTP does NOT provide application-layer encryption. `GOBOXD_KILL_SWITCH=true` must remain active until the networking and TLS termination are confirmed.
+Synthetic users from `data/synthetic/users.json` are **never** imported into production Firestore.
+Run the idempotent bootstrap CLI to create the initial administrative principal:
 
-### Networking Architecture
-1. **Private Subnet:** The goboxd GCE VM (`e2-standard-4`, Ubuntu 22.04 LTS / Debian 12 with cgroup v2) must be provisioned with a private RFC1918 internal IP only (no external public IP).
-2. **Cloud Run VPC Egress:** Cloud Run must be attached to the same VPC using **Direct VPC Egress** (`--network=default --subnet=default --vpc-egress=private-ranges-only`) or a Serverless VPC Access connector.
-3. **Firewall Ingress Rule:** The VM firewall must strictly restrict ingress to port `8081` from the Cloud Run egress subnet only:
-   ```bash
-   gcloud compute firewall-rules create allow-cloudrun-to-goboxd \
-     --network=default \
-     --action=ALLOW \
-     --direction=INGRESS \
-     --rules=tcp:8081 \
-     --source-ranges="10.8.0.0/28" \
-     --target-tags="goboxd-sandbox" \
-     --project="${PROJECT_ID}"
-   ```
-4. **Transport Layer Security (TLS):** Before activating the kill-switch in production, install a reverse proxy (e.g., Caddy or Nginx with an internal CA certificate) on the VM to terminate TLS/HTTPS at port 8443, ensuring bearer token confidentiality in transit.
+```bash
+python scripts/bootstrap_principals.py \
+  --project="${PROJECT_ID}" \
+  --database="${FIRESTORE_DB}" \
+  --tenant="staging-enterprise" \
+  --principal-id="usr_staging_admin_01" \
+  --display-name="Staging Administrator" \
+  --roles="admin,operator,supervisor" \
+  --clearance="confidential"
+```
+
+The script will:
+1. Generate a high-entropy 24-character one-time password (or use `--password` if supplied).
+2. Hash the password with salted PBKDF2-HMAC-SHA256 (600,000 rounds).
+3. Write the document to `principals/usr_staging_admin_01` (plaintext passwords are never stored).
+4. Record an auditable event in `audit_events`.
+5. Display the one-time enrollment credential securely to the terminal.
 
 ---
 
-## 4. Build and Deployment Execution
+## 4. goboxd Sandbox Networking & Transport Requirements
+
+> [!CAUTION]
+> The sandbox daemon operates on plain HTTP over port 8081 by default. While VPC traffic is link-encrypted within Google Cloud data centers, HTTP does NOT provide application-layer encryption. `GOBOXD_KILL_SWITCH=true` must remain active until private subnet routing and TLS/mTLS reverse-proxy termination are verified.
+
+### Unified Network Architecture
+1. **VPC Network:** `lara-vpc` with private subnet `lara-private-subnet`.
+2. **Cloud Run Egress:** Direct VPC Egress attached to `lara-private-subnet` with `--vpc-egress=private-ranges-only`.
+3. **VM Ingress Firewall:** The GCE VM firewall restricts ingress on TCP 8081 strictly from the Cloud Run egress subnet CIDR:
+   ```bash
+   gcloud compute firewall-rules create allow-cloudrun-to-goboxd \
+     --network="${VPC_NAME}" \
+     --action=ALLOW \
+     --direction=INGRESS \
+     --rules=tcp:8081 \
+     --source-ranges="${CLOUDRUN_SUBNET_CIDR}" \
+     --target-tags="goboxd-sandbox" \
+     --project="${PROJECT_ID}"
+   ```
+4. **TLS/mTLS Requirement:** Before disabling `GOBOXD_KILL_SWITCH`, configure an internal NGINX/Envoy reverse proxy on the VM with a private CA certificate, requiring client certificate verification (mTLS) to protect bearer token confidentiality in transit.
+
+---
+
+## 5. Build and Deployment Execution
 
 Trigger Cloud Build using the user-managed service account:
 ```bash
@@ -230,11 +262,11 @@ gcloud builds submit \
 SERVICE_URL=$(gcloud run services describe "${SERVICE_NAME}" --region="${REGION}" --format="value(status.url)")
 
 # 2. Check liveness probe
-curl -f "${SERVICE_URL}/health/live"
+curl -f "${SERVICE_URL}/api/v1/health/live"
 
-# 3. Check readiness probe
-curl -f "${SERVICE_URL}/health/ready"
+# 3. Check readiness probe (validates database, principal bootstrap, Vertex AI config, and sandbox status)
+curl -f "${SERVICE_URL}/api/v1/health/ready"
 
-# 4. Open single-origin UI in browser
-echo "Open ${SERVICE_URL} in browser"
+# Note: /health/ready returning 200 confirms database reachability, principal bootstrap,
+# and Vertex SDK configuration. It does NOT claim live Vertex AI inference execution.
 ```

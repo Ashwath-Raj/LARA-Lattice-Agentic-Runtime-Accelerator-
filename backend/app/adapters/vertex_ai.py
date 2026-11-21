@@ -62,31 +62,43 @@ class MockVertexAIAdapter(BaseModelAdapter):
 
 class VertexAIGeminiAdapter(BaseModelAdapter):
     """Production Vertex AI Gemini adapter using official google-genai SDK in Vertex mode."""
-    def __init__(self, project: str, location: str, model_id: str):
-        from google import genai
-        # Initialize client in Vertex mode via ADC
-        self.client = genai.Client(vertexai=True, project=project, location=location)
+    def __init__(self, project: str, location: str, model_id: str, client: Optional[Any] = None):
+        if client is not None:
+            self.client = client
+        else:
+            from google import genai
+            # Initialize client in Vertex mode via ADC
+            self.client = genai.Client(vertexai=True, project=project, location=location)
         self.model_id = model_id
 
     async def generate_structured(self, system_prompt: str, user_prompt: str, schema: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        from google.genai import types
         try:
-            # Using genai client generate_content
-            config: Dict[str, Any] = {
+            # Using genai client generate_content with types.GenerateContentConfig.
+            # Note: For Gemini 3.8 Flash, sampling parameters like temperature are omitted
+            # to preserve the model's optimized default reasoning settings (1.0).
+            config_kwargs: Dict[str, Any] = {
                 "system_instruction": system_prompt,
-                "temperature": 0.1,
             }
             if schema:
-                config["response_mime_type"] = "application/json"
-                config["response_schema"] = schema
+                config_kwargs["response_mime_type"] = "application/json"
+                config_kwargs["response_schema"] = schema
+
+            config = types.GenerateContentConfig(**config_kwargs)
 
             response = self.client.models.generate_content(
                 model=self.model_id,
                 contents=user_prompt,
                 config=config
             )
-            if response.text:
+            if not response or not hasattr(response, "text") or not response.text or not response.text.strip():
+                raise ValueError("Empty response received from Vertex AI model")
+
+            try:
                 return json.loads(response.text)
-            return {"error": "Empty response from Vertex AI"}
+            except json.JSONDecodeError as jde:
+                raise ValueError(f"Malformed JSON response from Vertex AI model: {jde}") from jde
+
         except Exception as e:
             logger.error("Vertex AI inference failure", exc_info=e)
             raise

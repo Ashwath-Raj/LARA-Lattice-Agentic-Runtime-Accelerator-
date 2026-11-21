@@ -13,19 +13,24 @@ def test_health_endpoints(client):
 
     res2 = client.get("/api/v1/health/ready")
     assert res2.status_code == 200
-    assert res2.json() == {"status": "ready"}
+    assert res2.json()["status"] == "ready"
+    assert "components" in res2.json()
+    assert res2.json()["components"]["database"]["status"] == "ok"
+    assert res2.json()["components"]["principals"]["status"] == "ok"
 
 def test_health_readiness_failure_on_db_error(client, monkeypatch):
     from backend.app.repositories import base
     class BrokenRepo:
         def get(self, *args, **kwargs):
             raise RuntimeError("Simulated database connection failure")
+        def list(self, *args, **kwargs):
+            raise RuntimeError("Simulated database connection failure")
     monkeypatch.setattr(base, "get_repository", lambda: BrokenRepo())
 
     res = client.get("/api/v1/health/ready")
     assert res.status_code == 503
     assert res.json()["status"] == "not_ready"
-    assert "Database check failed" in res.json()["error"]
+    assert any("Database check failed" in err for err in res.json().get("errors", []))
 
 def test_unauthenticated_request_rejected(client):
     res = client.get("/api/v1/auth/me")

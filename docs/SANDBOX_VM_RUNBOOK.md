@@ -65,7 +65,10 @@ gcloud compute instances create "${VM_NAME}" \
 ### 2.2 VPC Firewall Rule: Restrict Ingress to Cloud Run VPC Egress Only
 
 ```bash
-# Allow ingress to port 8081 ONLY from the Cloud Run VPC connector range
+# Allow ingress to port 8081 ONLY from the Cloud Run VPC egress subnet range
+# (Replace with the verified CIDR assigned to lara-private-subnet in your IPAM plan; do NOT use placeholder ranges)
+export CLOUDRUN_SUBNET_CIDR="<your-cloudrun-subnet-cidr>"
+
 gcloud compute firewall-rules create allow-cloudrun-to-goboxd \
     --project="${PROJECT_ID}" \
     --network="lara-vpc" \
@@ -73,9 +76,37 @@ gcloud compute firewall-rules create allow-cloudrun-to-goboxd \
     --priority=1000 \
     --action=ALLOW \
     --rules=tcp:8081 \
-    --source-ranges="10.8.0.0/28" \
+    --source-ranges="${CLOUDRUN_SUBNET_CIDR}" \
+    --target-tags="goboxd-sandbox" \
     --target-service-accounts="goboxd-sandbox-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
+
+### 2.3 Production TLS/mTLS Reverse-Proxy Setup
+By default, goboxd listens on plain HTTP over port 8081. Before disabling the administrative kill-switch (`GOBOXD_KILL_SWITCH=false`), front the daemon with a reverse proxy (e.g. NGINX) terminating TLS:
+
+```nginx
+# /etc/nginx/sites-available/goboxd-mtls.conf
+server {
+    listen 8443 ssl;
+    server_name goboxd.internal;
+
+    ssl_certificate /etc/ssl/certs/goboxd-server.crt;
+    ssl_certificate_key /etc/ssl/private/goboxd-server.key;
+
+    # Client-side certificate verification (mTLS)
+    ssl_client_certificate /etc/ssl/certs/lara-internal-ca.crt;
+    ssl_verify_client on;
+
+    location / {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+> [!CAUTION]
+> `GOBOXD_KILL_SWITCH=true` must remain active in staging until the private VM is provisioned, authenticated, and mTLS verification is operational.
 
 ---
 

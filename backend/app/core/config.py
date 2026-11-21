@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     GOBOXD_BASE_URL: str = Field(default="http://localhost:8081")
     GOBOXD_INTERNAL_AUTH_TOKEN: Optional[str] = Field(default=None, description="Internal auth token for goboxd proxy")
     GOBOXD_TIMEOUT_SECONDS: float = 15.0
-    GOBOXD_KILL_SWITCH: bool = Field(default=False, description="When true, all sandbox execution is blocked")
+    GOBOXD_KILL_SWITCH: bool = Field(default=True, description="When true, all sandbox execution is blocked (fail closed)")
     SANDBOX_MAX_WALL_TIME_S: int = 10
     SANDBOX_MAX_MEMORY_KB: int = 1048576  # 1 GB
     SANDBOX_MAX_PROCESSES: int = 100
@@ -94,3 +94,8 @@ if settings.ENVIRONMENT.lower() in ["production", "prod"]:
         raise ValueError("Production startup failed: COOKIE_SECURE must be True in production")
     if "*" in settings.CORS_ALLOWED_ORIGINS:
         raise ValueError("Production startup failed: Wildcard CORS origin is prohibited in production")
+    if not settings.GOBOXD_KILL_SWITCH:
+        if not settings.GOBOXD_INTERNAL_AUTH_TOKEN or len(settings.GOBOXD_INTERNAL_AUTH_TOKEN) < 16:
+            raise ValueError("Production startup failed: GOBOXD_INTERNAL_AUTH_TOKEN must be securely configured when GOBOXD_KILL_SWITCH is False")
+        if "localhost" in settings.GOBOXD_BASE_URL or "127.0.0.1" in settings.GOBOXD_BASE_URL:
+            raise ValueError("Production startup failed: GOBOXD_BASE_URL must not point to localhost in production")

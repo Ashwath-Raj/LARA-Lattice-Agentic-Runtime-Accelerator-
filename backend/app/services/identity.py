@@ -32,11 +32,19 @@ class IdentityService:
         if settings.ENVIRONMENT.lower() in ["production", "prod"] and not settings.GOOGLE_CLOUD_PROJECT:
             raise AuthenticationError("Demo login is restricted in production environments.")
 
-        # Verify password if password_hash exists on principal
+        # Require a valid password hash for password-based authentication
         stored_hash = p_data.get("password_hash")
-        supplied_password = password or settings.DEMO_PASSWORD
-        if stored_hash and not verify_password(supplied_password, stored_hash):
-            raise AuthenticationError("Invalid password for demo principal")
+        if not stored_hash or not isinstance(stored_hash, str) or not stored_hash.strip():
+            raise AuthenticationError(f"Principal '{principal_id}' has no configured password hash (uninitialized credential)")
+
+        supplied_password = password
+        if not supplied_password:
+            if settings.ENVIRONMENT.lower() in ["production", "prod"]:
+                raise AuthenticationError("Password is required for production authentication")
+            supplied_password = settings.DEMO_PASSWORD
+
+        if not verify_password(supplied_password, stored_hash):
+            raise AuthenticationError("Invalid password for principal")
 
         session_id = f"sess_{uuid.uuid4().hex}"
         now_dt = datetime.now(timezone.utc)
@@ -51,6 +59,53 @@ class IdentityService:
         )
         self.repo.set("sessions", session_id, session.model_dump())
         return session
+
+    def bootstrap_principal(
+        self,
+        principal_id: str,
+        display_name: str,
+        roles: List[str],
+        attributes: Dict[str, Any],
+        password_hash: str,
+        tenant_id: str = "demo-enterprise",
+        force_reset: bool = False,
+        actor: str = "system:bootstrap"
+    ) -> Dict[str, Any]:
+        """Idempotently bootstrap an initial principal record into the repository.
+        Plaintext passwords are never accepted or stored. Only verified password hashes are written.
+        """
+        if not password_hash or not password_hash.startswith("pbkdf2"):
+            raise ValueError("A valid salted password hash (pbkdf2...) is strictly required for principal bootstrap")
+
+        existing = self.repo.get("principals", principal_id)
+        if existing and not force_reset:
+            return {"status": "exists", "principal_id": principal_id, "action": "retained"}
+
+        principal_doc = {
+            "principal_id": principal_id,
+            "display_name": display_name,
+            "roles": roles,
+            "attributes": attributes,
+            "tenant_id": tenant_id,
+            "password_hash": password_hash,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        self.repo.set("principals", principal_id, principal_doc)
+
+        # Write audit event for principal bootstrap
+        audit_event = {
+            "event_id": f"evt_{uuid.uuid4().hex[:12]}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "actor": actor,
+            "action": "principal.bootstrap",
+            "resource": f"principal:{principal_id}",
+            "tenant_id": tenant_id,
+            "roles": roles,
+            "status": "SUCCESS"
+        }
+        self.repo.set("audit_events", audit_event["event_id"], audit_event)
+
+        return {"status": "created" if not existing else "reset", "principal_id": principal_id, "action": "written"}
 
     def validate_session(self, session_id: Optional[str]) -> Principal:
         if not session_id:

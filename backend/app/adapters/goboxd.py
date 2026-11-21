@@ -58,6 +58,10 @@ class GoboxdClient:
 
     async def execute_run(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Post a validated RunRequest to goboxd /run endpoint and validate response schema and output bounds."""
+        # Enforce administrative kill switch at adapter level
+        if settings.GOBOXD_KILL_SWITCH:
+            raise SandboxError("Sandbox execution disabled via administrative kill-switch", code="KILL_SWITCH_ACTIVE", status_code=403)
+
         url = f"{self.base_url}/run"
         headers = {
             "Content-Type": "application/json",

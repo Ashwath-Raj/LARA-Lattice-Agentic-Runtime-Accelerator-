@@ -17,6 +17,7 @@ def mock_goboxd_client():
 
 @pytest.fixture
 def tool_gateway(mock_goboxd_client):
+    from backend.app.core.config import settings
     repo = InMemoryRepository()
     repo.set("tasks", "tsk_test_01", {
         "task_id": "tsk_test_01",
@@ -24,7 +25,12 @@ def tool_gateway(mock_goboxd_client):
         "created_by": "usr_operator_01",
         "status": "QUEUED"
     })
-    return ToolGateway(repo=repo, goboxd_client=mock_goboxd_client)
+    orig_kill_switch = settings.GOBOXD_KILL_SWITCH
+    settings.GOBOXD_KILL_SWITCH = False
+    try:
+        yield ToolGateway(repo=repo, goboxd_client=mock_goboxd_client)
+    finally:
+        settings.GOBOXD_KILL_SWITCH = orig_kill_switch
 
 @pytest.mark.asyncio
 async def test_sandbox_execution_success(tool_gateway, mock_goboxd_client):
@@ -162,20 +168,73 @@ async def test_tool_gateway_maintenance_request_requires_approval(tool_gateway):
 async def test_goboxd_client_fail_closed_with_mock_transport():
     import httpx
     from backend.app.adapters.goboxd import GoboxdClient
+    from backend.app.core.config import settings
     from backend.app.core.errors import SandboxUnavailableError, SandboxTimeoutError
 
-    # 1. 503 Service Unavailable -> SandboxUnavailableError
-    def handler_503(request: httpx.Request):
-        return httpx.Response(503, json={"error": "Queue exhausted"})
+    orig = settings.GOBOXD_KILL_SWITCH
+    settings.GOBOXD_KILL_SWITCH = False
+    try:
+        # 1. 503 Service Unavailable -> SandboxUnavailableError
+        def handler_503(request: httpx.Request):
+            return httpx.Response(503, json={"error": "Queue exhausted"})
 
-    client_503 = GoboxdClient(base_url="http://mock-goboxd:8080", transport=httpx.MockTransport(handler_503))
-    with pytest.raises(SandboxUnavailableError):
-        await client_503.execute_run({"language": "py3", "source": "print(1)"})
+        client_503 = GoboxdClient(base_url="http://mock-goboxd:8080", transport=httpx.MockTransport(handler_503))
+        with pytest.raises(SandboxUnavailableError):
+            await client_503.execute_run({"language": "py3", "source": "print(1)"})
 
-    # 2. Connection error / timeout
-    def handler_timeout(request: httpx.Request):
-        raise httpx.ConnectTimeout("Connection timed out to goboxd host")
+        # 2. Connection error / timeout
+        def handler_timeout(request: httpx.Request):
+            raise httpx.ConnectTimeout("Connection timed out to goboxd host")
 
-    client_timeout = GoboxdClient(base_url="http://mock-goboxd:8080", transport=httpx.MockTransport(handler_timeout))
-    with pytest.raises((SandboxTimeoutError, SandboxUnavailableError)):
-        await client_timeout.execute_run({"language": "py3", "source": "print(1)"})
+        client_timeout = GoboxdClient(base_url="http://mock-goboxd:8080", transport=httpx.MockTransport(handler_timeout))
+        with pytest.raises((SandboxTimeoutError, SandboxUnavailableError)):
+            await client_timeout.execute_run({"language": "py3", "source": "print(1)"})
+    finally:
+        settings.GOBOXD_KILL_SWITCH = orig
+
+@pytest.mark.asyncio
+async def test_kill_switch_active_blocks_tool_gateway(tool_gateway):
+    """Verify tool gateway strictly blocks execution when GOBOXD_KILL_SWITCH is True."""
+    from backend.app.core.config import settings
+    settings.GOBOXD_KILL_SWITCH = True
+    operator = Principal(principal_id="usr_operator_01", display_name="Operator", roles=["operator"], attributes={"clearance": "internal"})
+    with pytest.raises(PolicyDeniedError, match="administrative kill-switch") as exc_info:
+        await tool_gateway.execute_sandbox(
+            principal=operator,
+            task_id="tsk_test_01",
+            language="py3",
+            source="print(1)"
+        )
+    assert exc_info.value.code == "KILL_SWITCH_ACTIVE"
+
+@pytest.mark.asyncio
+async def test_kill_switch_cannot_be_bypassed_by_admin(tool_gateway):
+    """Verify tool gateway kill-switch cannot be bypassed even by runtime admin."""
+    from backend.app.core.config import settings
+    settings.GOBOXD_KILL_SWITCH = True
+    admin = Principal(principal_id="usr_admin_01", display_name="Administrator", roles=["runtime_admin"], attributes={"clearance": "confidential"})
+    with pytest.raises(PolicyDeniedError, match="administrative kill-switch"):
+        await tool_gateway.execute_sandbox(
+            principal=admin,
+            task_id="tsk_test_01",
+            language="py3",
+            source="print(1)"
+        )
+
+@pytest.mark.asyncio
+async def test_kill_switch_active_blocks_goboxd_client():
+    """Verify GoboxdClient itself enforces kill-switch fail-closed at adapter layer."""
+    from backend.app.adapters.goboxd import GoboxdClient
+    from backend.app.core.config import settings
+    from backend.app.core.errors import SandboxError
+    settings.GOBOXD_KILL_SWITCH = True
+    client = GoboxdClient(base_url="http://mock-goboxd:8080")
+    with pytest.raises(SandboxError, match="administrative kill-switch") as exc_info:
+        await client.execute_run({"language": "py3", "source": "print(1)"})
+    assert exc_info.value.code == "KILL_SWITCH_ACTIVE"
+
+def test_default_config_kill_switch_is_true():
+    """Verify Settings defaults to fail-closed kill-switch (True)."""
+    from backend.app.core.config import Settings
+    s = Settings()
+    assert s.GOBOXD_KILL_SWITCH is True
