@@ -18,11 +18,12 @@
 | **Branch & Git Safety** | **PASS** | Original branches `feat/ashwath-runtime-goboxd-integration` (`9047f3a`) and `feature/praneeth-frontend` (`4d092e3`) remain 100% intact. Integration work strictly isolated on `integrate/lara-gcp-staging`. |
 | **Frontend Implementation** | **PASS** | Praneeth's Bright Lattice UI (React 19, TypeScript, tokens, UI primitives) fully integrated and verified. |
 | **Backend Implementation** | **PASS** | All 42 FastAPI routes, Pydantic schemas, policy engine, Highways resolver, Agent registry, and Evolution engine verified. |
-| **Automated Backend Test Gates** | **PASS** | **99 passed, 2 skipped** (0 failures) via `python -m pytest -v`. Includes new suites for Vertex AI adapter, identity bootstrap, and granular health readiness. |
+| **Automated Backend Test Gates** | **PASS** | **108 passed, 2 skipped** (0 failures) via `python -m pytest -v`. Includes test suites for goboxd mTLS client (`test_goboxd_client_mtls.py`), Vertex AI adapter, identity bootstrap, and granular health readiness. |
 | **Automated Frontend Test Gates** | **PASS** | **20 passed** (0 failures) via `npm test -- --run`. Oxlint passed with 0 errors across 45 files. |
 | **Single-Origin Static Mounting** | **PASS** | `npm run build` outputs directly to `backend/app/static`. FastAPI mounts `/` serving React SPA, with `/api/v1/*` routes functioning cleanly. |
 | **API Contract & Truthful Provenance** | **PASS** | False success toasts and demo fallbacks eliminated in API mode. Added `GET /tasks` and `GET /graph/edges` with tenant/role scoping. |
 | **Vertex AI Model Adapter** | **PASS** | `VertexAIGeminiAdapter` updated to `google-genai` 3.6.1 typed `GenerateContentConfig`; removed unsupported `temperature: 0.1` to preserve default reasoning (1.0); added regression tests for malformed JSON, empty payloads, and provider errors. |
+| **goboxd mTLS & Auth Integration** | **PASS** | Server-side constant-time Bearer auth in goboxd (`feat/lara-authenticated-runtime` @ `2704308`); client-side mTLS and Bearer token in LARA `GoboxdClient`; complete VM deployment package in `deploy/goboxd/`. |
 | **Fail-Closed Sandbox Policy** | **PASS** | `GOBOXD_KILL_SWITCH` defaults to `True` in `config.py` and `.env.example`; fail-closed enforcement at both ToolGateway and GoboxdClient adapter layers; production startup fails closed if enabled without secure token or if pointing to localhost. |
 | **Secure Principal Bootstrap** | **PASS** | Created `scripts/bootstrap_principals.py`; enforced salted PBKDF2-HMAC-SHA256 password hashes; rejected missing hashes; synthetic users strictly blocked from production Firestore; audit logging verified. |
 | **Granular Readiness Probe** | **PASS** | `/health/ready` tests database reachability, principal bootstrap availability (fails 503 if zero principals), reports Vertex AI configuration separately, and reports sandbox kill-switch state. Explicitly documents that health probes do not execute paid live inference. |
@@ -51,6 +52,7 @@ Results:
   tests/unit/test_evolution_extended.py: 3 passed
   tests/unit/test_files_routes.py: 5 passed
   tests/unit/test_firestore_repo.py: 3 passed
+  tests/unit/test_goboxd_client_mtls.py: 9 passed (mTLS context, Bearer token, fail closed, truncation, HTTP status codes)
   tests/unit/test_governance_routes.py: 2 passed
   tests/unit/test_graph_routes.py: 5 passed
   tests/unit/test_health_extended.py: 4 passed (granular component & bootstrap readiness)
@@ -62,7 +64,7 @@ Results:
   tests/unit/test_tool_gateway.py: 17 passed (including kill-switch fail-closed enforcement)
   tests/unit/test_vertex_ai.py: 6 passed (typed config, structured output, error handling)
 
-TOTAL: 99 passed, 2 skipped in 12.75s (100% pass rate for executable tests)
+TOTAL: 108 passed, 2 skipped in 8.18s (100% pass rate for executable tests)
 ```
 
 ### 2.2 Frontend Vitest Suite

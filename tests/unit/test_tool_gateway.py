@@ -178,7 +178,7 @@ async def test_goboxd_client_fail_closed_with_mock_transport():
         def handler_503(request: httpx.Request):
             return httpx.Response(503, json={"error": "Queue exhausted"})
 
-        client_503 = GoboxdClient(base_url="http://mock-goboxd:8080", transport=httpx.MockTransport(handler_503))
+        client_503 = GoboxdClient(base_url="http://mock-goboxd:8080", auth_token="mock-token-secret-12345", transport=httpx.MockTransport(handler_503))
         with pytest.raises(SandboxUnavailableError):
             await client_503.execute_run({"language": "py3", "source": "print(1)"})
 
@@ -186,7 +186,7 @@ async def test_goboxd_client_fail_closed_with_mock_transport():
         def handler_timeout(request: httpx.Request):
             raise httpx.ConnectTimeout("Connection timed out to goboxd host")
 
-        client_timeout = GoboxdClient(base_url="http://mock-goboxd:8080", transport=httpx.MockTransport(handler_timeout))
+        client_timeout = GoboxdClient(base_url="http://mock-goboxd:8080", auth_token="mock-token-secret-12345", transport=httpx.MockTransport(handler_timeout))
         with pytest.raises((SandboxTimeoutError, SandboxUnavailableError)):
             await client_timeout.execute_run({"language": "py3", "source": "print(1)"})
     finally:

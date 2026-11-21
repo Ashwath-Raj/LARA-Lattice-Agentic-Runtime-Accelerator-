@@ -18,7 +18,7 @@ LARA strictly disallows granting broad `Owner` or `Editor` roles to automated se
                  ├──> roles/datastore.user (Firestore Native Database only)
                  ├──> roles/aiplatform.user (Vertex AI model inference calls)
                  ├──> roles/storage.objectUser (gs://${PROJECT_ID}-lara-assets bucket only)
-                 ├──> roles/secretmanager.secretAccessor (lara-secret-key, lara-goboxd-token only)
+                 ├──> roles/secretmanager.secretAccessor (lara-secret-key, lara-goboxd-token, lara-goboxd-ca, lara-goboxd-client-cert, lara-goboxd-client-key, lara-admin-initial-password)
                  ├──> roles/logging.logWriter (Cloud Logging structured event emitter)
                  └──> roles/monitoring.metricWriter (Cloud Monitoring custom telemetry)
 
@@ -32,6 +32,15 @@ LARA strictly disallows granting broad `Owner` or `Editor` roles to automated se
                  ├──> roles/run.developer (Deploy Cloud Run revisions)
                  ├──> roles/iam.serviceAccountUser (Scoped specifically to lara-runtime-sa)
                  └──> roles/logging.logWriter (Emit Cloud Build execution logs)
+
+┌─────────────────────────────────┐
+│     goboxd Sandbox VM SA        │
+│ goboxd-sandbox-sa@${PROJECT_ID} │
+└────────────────┬────────────────┘
+                 │
+                 ├──> roles/secretmanager.secretAccessor (lara-goboxd-token, lara-goboxd-ca, lara-goboxd-server-cert, lara-goboxd-server-key)
+                 ├──> roles/logging.logWriter (VM syslog and daemon output)
+                 └──> roles/monitoring.metricWriter (VM host telemetry)
 ```
 
 ### Submitting User IAM Requirement

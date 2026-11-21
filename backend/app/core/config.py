@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     GOBOXD_INTERNAL_AUTH_TOKEN: Optional[str] = Field(default=None, description="Internal auth token for goboxd proxy")
     GOBOXD_TIMEOUT_SECONDS: float = 15.0
     GOBOXD_KILL_SWITCH: bool = Field(default=True, description="When true, all sandbox execution is blocked (fail closed)")
+    GOBOXD_TLS_CA_CERT_PATH: Optional[str] = Field(default=None, description="Path to CA certificate bundle for goboxd TLS verification")
+    GOBOXD_TLS_CLIENT_CERT_PATH: Optional[str] = Field(default=None, description="Path to client certificate for goboxd mTLS")
+    GOBOXD_TLS_CLIENT_KEY_PATH: Optional[str] = Field(default=None, description="Path to client private key for goboxd mTLS")
     SANDBOX_MAX_WALL_TIME_S: int = 10
     SANDBOX_MAX_MEMORY_KB: int = 1048576  # 1 GB
     SANDBOX_MAX_PROCESSES: int = 100
@@ -99,3 +102,5 @@ if settings.ENVIRONMENT.lower() in ["production", "prod"]:
             raise ValueError("Production startup failed: GOBOXD_INTERNAL_AUTH_TOKEN must be securely configured when GOBOXD_KILL_SWITCH is False")
         if "localhost" in settings.GOBOXD_BASE_URL or "127.0.0.1" in settings.GOBOXD_BASE_URL:
             raise ValueError("Production startup failed: GOBOXD_BASE_URL must not point to localhost in production")
+        if not settings.GOBOXD_BASE_URL.startswith("https://"):
+            raise ValueError("Production startup failed: GOBOXD_BASE_URL must use HTTPS in production")

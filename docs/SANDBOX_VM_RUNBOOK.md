@@ -2,8 +2,8 @@
 
 **Service**: goboxd Execution Provider
 **Upstream Repository**: `https://github.com/Praneeth0910/goboxd`
-**Target Branch**: `team/sudo`
-**Pinned Commit SHA**: `2e8a10dfc6271f33e88571446f319a1c3a7f11da`
+**Base Upstream Branch**: `team/sudo` (`2e8a10dfc6271f33e88571446f319a1c3a7f11da`)
+**Integrated Feature Branch**: `feat/lara-authenticated-runtime` (`27043089b44b739d41f34cf22b8465d15f6b06cd`)
 **License**: GNU General Public License v3.0 (GPL-3.0)
 
 ---
@@ -21,10 +21,12 @@
   └── Tool Gateway (Payload Construction, Flag & Quota Checks, Kill Switch)
         │
         │ Private Authenticated VPC Traffic (Serverless VPC Access / Direct Egress)
+        │ Port 8443 (Mutual TLS, Encrypted, Client Cert Verified)
         │ Authorization: Bearer <GOBOXD_INTERNAL_AUTH_TOKEN>
         ▼
 [ Dedicated Hardened GCE Linux VM ] (No GCP Data Credentials, Loopback/Jail Only)
-  ├── Systemd Service: goboxd daemon (Port 8081)
+  ├── NGINX Reverse Proxy (Port 8443 mTLS terminating -> http://127.0.0.1:8081)
+  ├── Docker Compose / Systemd Service: goboxd daemon (Port 8081 loopback)
   └── nsjail Sandboxed Subprocesses (cgroup v2, PID/Mount/UTS/IPC namespaces, seccomp-bpf)
 ```
 
@@ -65,44 +67,50 @@ gcloud compute instances create "${VM_NAME}" \
 ### 2.2 VPC Firewall Rule: Restrict Ingress to Cloud Run VPC Egress Only
 
 ```bash
-# Allow ingress to port 8081 ONLY from the Cloud Run VPC egress subnet range
-# (Replace with the verified CIDR assigned to lara-private-subnet in your IPAM plan; do NOT use placeholder ranges)
+# Allow ingress to port 8443 (mTLS) ONLY from the Cloud Run VPC egress subnet range
 export CLOUDRUN_SUBNET_CIDR="<your-cloudrun-subnet-cidr>"
 
-gcloud compute firewall-rules create allow-cloudrun-to-goboxd \
+gcloud compute firewall-rules create allow-cloudrun-to-goboxd-mtls \
     --project="${PROJECT_ID}" \
     --network="lara-vpc" \
     --direction=INGRESS \
     --priority=1000 \
     --action=ALLOW \
-    --rules=tcp:8081 \
+    --rules=tcp:8443 \
     --source-ranges="${CLOUDRUN_SUBNET_CIDR}" \
-    --target-tags="goboxd-sandbox" \
     --target-service-accounts="goboxd-sandbox-sa@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
 
-### 2.3 Production TLS/mTLS Reverse-Proxy Setup
-By default, goboxd listens on plain HTTP over port 8081. Before disabling the administrative kill-switch (`GOBOXD_KILL_SWITCH=false`), front the daemon with a reverse proxy (e.g. NGINX) terminating TLS:
+### 2.3 Turnkey VM Setup & Deployment via `deploy/goboxd/`
 
-```nginx
-# /etc/nginx/sites-available/goboxd-mtls.conf
-server {
-    listen 8443 ssl;
-    server_name goboxd.internal;
+All deployment assets are automated in `deploy/goboxd/`:
+- `generate_certificates.sh`: Creates CA, server certificate (SAN `goboxd.internal`, `127.0.0.1`), and client certificate.
+- `setup_vm.sh`: Installs Docker, NGINX, deploys `docker-compose.yml`, registers `goboxd.service`, and configures UFW firewall.
+- `smoke_test.py`: Validates mTLS and execution of Python 3, C, and C++.
 
-    ssl_certificate /etc/ssl/certs/goboxd-server.crt;
-    ssl_certificate_key /etc/ssl/private/goboxd-server.key;
+```bash
+# 1. Generate internal PKI certificates
+cd deploy/goboxd
+./generate_certificates.sh /etc/lara/certs
 
-    # Client-side certificate verification (mTLS)
-    ssl_client_certificate /etc/ssl/certs/lara-internal-ca.crt;
-    ssl_verify_client on;
+# 2. Upload certificates to Secret Manager
+gcloud secrets create lara-goboxd-ca --data-file=/etc/lara/certs/lara-internal-ca.crt
+gcloud secrets create lara-goboxd-server-cert --data-file=/etc/lara/certs/goboxd-server.crt
+gcloud secrets create lara-goboxd-server-key --data-file=/etc/lara/certs/goboxd-server.key
+gcloud secrets create lara-goboxd-client-cert --data-file=/etc/lara/certs/lara-client.crt
+gcloud secrets create lara-goboxd-client-key --data-file=/etc/lara/certs/lara-client.key
 
-    location / {
-        proxy_pass http://127.0.0.1:8081;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+# 3. SSH into VM and run automated bring-up
+gcloud compute ssh "${VM_NAME}" --zone="${ZONE}" --project="${PROJECT_ID}"
+sudo ./setup_vm.sh
+
+# 4. Verify deployment with smoke test
+python3 smoke_test.py \
+    --host="https://goboxd.internal:8443" \
+    --token="<your-goboxd-internal-auth-token>" \
+    --ca-cert="/etc/lara/certs/lara-internal-ca.crt" \
+    --client-cert="/etc/lara/certs/lara-client.crt" \
+    --client-key="/etc/lara/certs/lara-client.key"
 ```
 
 > [!CAUTION]

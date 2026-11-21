@@ -173,27 +173,43 @@ gcloud iam service-accounts add-iam-policy-binding "${BUILD_SA}" \
 > [!NOTE]
 > Do NOT use the `--impersonate-service-account` flag when submitting builds. `cloudbuild.yaml` directly specifies `serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/${_BUILD_SA}'`. Cloud Build natively executes the build under that identity once the submitting user has `iam.serviceAccountUser` on `lara-build-sa`.
 
-### Step 2.6 — Configure Secret Manager Secrets
-Store cryptographically secure values in Secret Manager:
+### Step 2.6 — Configure Secret Manager Secrets (8 Canonical Secrets)
+Store cryptographically secure values and certificates in Secret Manager:
 ```bash
 # 1. Session secret key (minimum 32 characters)
 SECRET_KEY_VAL=$(openssl rand -hex 32)
 echo -n "${SECRET_KEY_VAL}" | gcloud secrets create lara-secret-key --data-file=- --project="${PROJECT_ID}"
 
-# 2. Internal goboxd auth token (minimum 16 characters)
+# 2. Internal goboxd auth token (minimum 32 characters)
 GOBOXD_TOKEN_VAL=$(openssl rand -hex 32)
 echo -n "${GOBOXD_TOKEN_VAL}" | gcloud secrets create lara-goboxd-token --data-file=- --project="${PROJECT_ID}"
 
-# 3. Grant Secret Accessor to the Cloud Run runtime identity ONLY
-gcloud secrets add-iam-policy-binding lara-secret-key \
-  --member="serviceAccount:${RUNTIME_SA}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project="${PROJECT_ID}"
+# 3. Initial Administrative Password
+ADMIN_PASS_VAL=$(openssl rand -base64 24)
+echo -n "${ADMIN_PASS_VAL}" | gcloud secrets create lara-admin-initial-password --data-file=- --project="${PROJECT_ID}"
 
-gcloud secrets add-iam-policy-binding lara-goboxd-token \
-  --member="serviceAccount:${RUNTIME_SA}" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project="${PROJECT_ID}"
+# 4-8. Mutual TLS (mTLS) Certificates (generated via deploy/goboxd/generate_certificates.sh)
+gcloud secrets create lara-goboxd-ca --data-file=/etc/lara/certs/lara-internal-ca.crt --project="${PROJECT_ID}"
+gcloud secrets create lara-goboxd-server-cert --data-file=/etc/lara/certs/goboxd-server.crt --project="${PROJECT_ID}"
+gcloud secrets create lara-goboxd-server-key --data-file=/etc/lara/certs/goboxd-server.key --project="${PROJECT_ID}"
+gcloud secrets create lara-goboxd-client-cert --data-file=/etc/lara/certs/lara-client.crt --project="${PROJECT_ID}"
+gcloud secrets create lara-goboxd-client-key --data-file=/etc/lara/certs/lara-client.key --project="${PROJECT_ID}"
+
+# Grant Secret Accessor to the Cloud Run runtime identity ONLY for its required secrets
+for s in lara-secret-key lara-goboxd-token lara-goboxd-ca lara-goboxd-client-cert lara-goboxd-client-key lara-admin-initial-password; do
+  gcloud secrets add-iam-policy-binding "$s" \
+    --member="serviceAccount:${RUNTIME_SA}" \
+    --role="roles/secretmanager.secretAccessor" \
+    --project="${PROJECT_ID}"
+done
+
+# Grant Secret Accessor to the goboxd VM identity ONLY for server certs and token
+for s in lara-goboxd-token lara-goboxd-ca lara-goboxd-server-cert lara-goboxd-server-key; do
+  gcloud secrets add-iam-policy-binding "$s" \
+    --member="serviceAccount:goboxd-sandbox-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor" \
+    --project="${PROJECT_ID}"
+done
 ```
 
 ---

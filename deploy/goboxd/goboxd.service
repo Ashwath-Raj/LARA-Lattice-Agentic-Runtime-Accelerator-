@@ -1,0 +1,18 @@
+[Unit]
+Description=goboxd nsjail Execution Container Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/goboxd
+EnvironmentFile=/etc/default/goboxd
+ExecStartPre=-/usr/bin/docker compose down
+ExecStart=/usr/bin/docker compose up
+ExecStop=/usr/bin/docker compose down
+Restart=always
+RestartSec=5s
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

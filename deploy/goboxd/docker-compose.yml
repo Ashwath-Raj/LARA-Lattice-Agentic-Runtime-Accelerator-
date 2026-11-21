@@ -1,0 +1,36 @@
+# goboxd Execution Service Docker Compose Topology
+# Security Architecture:
+# - Container listens internally on port 8080
+# - Published strictly to host loopback interface: 127.0.0.1:8081
+# - Privileged mode and cgroup v2 volume mount required for nsjail isolation
+# - NGINX reverse-proxy fronts this service on port 8443 with mTLS and Bearer verification
+
+version: '3.8'
+
+services:
+  goboxd:
+    image: ${GOBOSXD_IMAGE:-goboxd:latest}
+    container_name: goboxd-service
+    restart: unless-stopped
+    privileged: true
+    cgroup: host
+    network_mode: "bridge"
+    ports:
+      # Bound strictly to loopback to prevent external VPC/public ingress
+      - "127.0.0.1:8081:8080"
+    environment:
+      - GOBOXD_INTERNAL_AUTH_TOKEN=${GOBOXD_INTERNAL_AUTH_TOKEN:?GOBOXD_INTERNAL_AUTH_TOKEN must be set}
+      - GOBOXD_MAX_CONCURRENT=${GOBOXD_MAX_CONCURRENT:-4}
+      - NSJAIL_PATH=/usr/sbin/nsjail
+    volumes:
+      # Required for nsjail cgroup v2 memory and CPU controller limit enforcement
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - /tmp/goboxd-jail:/tmp
+    security_opt:
+      - seccomp=unconfined
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
