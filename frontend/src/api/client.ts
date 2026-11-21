@@ -50,7 +50,7 @@ import {
 } from './adapters';
 
 export class LaraApiClient {
-  private activePrincipal: Principal = SEEDED_PRINCIPALS[0]; // Default Maya Operator
+  private activePrincipal: Principal | null = null;
   private tasks: Map<string, Task> = new Map();
   private proposals: Map<string, EvolutionProposal> = new Map();
   private approvals: Map<string, ApprovalItem> = new Map();
@@ -78,22 +78,25 @@ export class LaraApiClient {
     return getDataMode();
   }
 
-  public getCurrentPrincipal(): Principal {
+  public getCurrentPrincipal(): Principal | null {
+    if (this.isMockMode() && !this.activePrincipal) {
+      this.activePrincipal = SEEDED_PRINCIPALS[0];
+    }
     return this.activePrincipal;
   }
 
   // --- AUTHENTICATION ---
 
   /**
-   * Switch identity or authenticate via demo credentials.
-   * In API mode, calls POST /api/v1/auth/demo-login with { principal_id, password }.
-   * Does NOT swallow errors; failures are propagated to the caller.
+   * Primary authentication endpoint.
+   * Calls POST /api/v1/auth/demo-login with { principal_id, password }.
+   * Does NOT swallow errors; failures are propagated directly to the caller.
    */
-  async demoLogin(principal_id: string): Promise<Principal> {
+  async login(principal_id: string, password: string): Promise<Principal> {
     if (!this.isMockMode()) {
       const payload = {
         principal_id,
-        password: 'demo-password',
+        password,
       };
       const res = await httpFetch<unknown>('/auth/demo-login', {
         method: 'POST',
@@ -121,11 +124,18 @@ export class LaraApiClient {
     return this.activePrincipal;
   }
 
+  /**
+   * Backward-compatible demo login helper.
+   */
+  async demoLogin(principal_id: string): Promise<Principal> {
+    return this.login(principal_id, 'demo-password');
+  }
+
   async logout(): Promise<void> {
     if (!this.isMockMode()) {
       await httpFetch<void>('/auth/logout', { method: 'POST' });
     }
-    this.activePrincipal = SEEDED_PRINCIPALS[0];
+    this.activePrincipal = null;
   }
 
   async getMe(): Promise<Principal> {
@@ -134,6 +144,9 @@ export class LaraApiClient {
       const principal = adaptPrincipalResponse(res);
       this.activePrincipal = principal;
       return this.activePrincipal;
+    }
+    if (!this.activePrincipal) {
+      this.activePrincipal = SEEDED_PRINCIPALS[0];
     }
     return this.activePrincipal;
   }
@@ -287,19 +300,16 @@ export class LaraApiClient {
 
   /**
    * Return recent tasks.
-   * If backend implements GET /tasks in the future, it fetches it; otherwise returns session tasks.
+   * Calls GET /api/v1/tasks in API mode.
+   * Never falls back to mock fixtures in API mode.
    */
   async getRecentTasks(): Promise<Task[]> {
     if (!this.isMockMode()) {
-      try {
-        const res = await httpFetch<unknown[]>('/tasks');
-        if (Array.isArray(res)) {
-          return res.map(adaptTaskResponse);
-        }
-      } catch {
-        // GET /tasks is not yet implemented by the backend (noted in contract matrix)
-        // Return local session tasks
+      const res = await httpFetch<unknown[]>('/tasks');
+      if (Array.isArray(res)) {
+        return res.map(adaptTaskResponse);
       }
+      return [];
     }
 
     return Array.from(this.tasks.values()).sort(
@@ -309,7 +319,7 @@ export class LaraApiClient {
 
   async getTaskEvents(taskId: string): Promise<TaskEvent[]> {
     if (!this.isMockMode()) {
-      const res = await httpFetch<unknown>(`/tasks/${taskId}/events`);
+      const res = await httpFetch<unknown>(`/tasks/${encodeURIComponent(taskId)}/events`);
       return adaptTaskEvents(res);
     }
 
@@ -470,9 +480,10 @@ export class LaraApiClient {
       if (Array.isArray(res)) {
         return res.map(adaptGraphNode);
       }
+      return [];
     }
 
-    const roles = this.activePrincipal.roles;
+    const roles = this.activePrincipal?.roles || [];
     const isConfidential = roles.includes('supervisor') || roles.includes('runtime_admin');
 
     return MOCK_GRAPH_NODES.filter((node) => {
@@ -489,9 +500,10 @@ export class LaraApiClient {
       if (Array.isArray(res)) {
         return res.map(adaptGraphEdge);
       }
+      return [];
     }
 
-    const roles = this.activePrincipal.roles;
+    const roles = this.activePrincipal?.roles || [];
     const isConfidential = roles.includes('supervisor') || roles.includes('runtime_admin');
 
     return MOCK_GRAPH_EDGES.filter((edge) => {
@@ -510,6 +522,7 @@ export class LaraApiClient {
       if (Array.isArray(res)) {
         return res.map(adaptAgentResponse);
       }
+      return [];
     }
     return MOCK_AGENTS;
   }
@@ -736,6 +749,7 @@ export class LaraApiClient {
       if (Array.isArray(res)) {
         return res.map(adaptApprovalResponse);
       }
+      return [];
     }
     return Array.from(this.approvals.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -743,7 +757,7 @@ export class LaraApiClient {
   }
 
   async decideApproval(approvalId: string, decision: ApprovalDecision): Promise<ApprovalItem> {
-    const roles = this.activePrincipal.roles;
+    const roles = this.activePrincipal?.roles || [];
     if (!roles.includes('supervisor') && !roles.includes('runtime_admin')) {
       throw new Error('Access Denied: Only Supervisor or Administrator can approve actions.');
     }
@@ -763,13 +777,13 @@ export class LaraApiClient {
     const item = this.approvals.get(approvalId);
     if (!item) throw new Error(`Approval ${approvalId} not found`);
 
-    if (item.requester_id === this.activePrincipal.principal_id && !roles.includes('runtime_admin')) {
+    if (item.requester_id === this.activePrincipal?.principal_id && !roles.includes('runtime_admin')) {
       throw new Error('Separation of Duties violation: Requester cannot approve their own action.');
     }
 
     item.status = decision.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
     item.decided_at = new Date().toISOString();
-    item.decided_by = this.activePrincipal.principal_id;
+    item.decided_by = this.activePrincipal?.principal_id || 'usr_unknown';
     item.decision_reason = decision.reason;
     this.approvals.set(approvalId, item);
 
@@ -788,7 +802,7 @@ export class LaraApiClient {
       status: 'SUCCESS',
       details: {
         approval_id: approvalId,
-        decided_by: this.activePrincipal.display_name,
+        decided_by: this.activePrincipal?.display_name || 'Unknown',
         reason: decision.reason,
       },
     });
@@ -800,25 +814,15 @@ export class LaraApiClient {
 
   async getAuditEvents(filter?: { taskId?: string; principalId?: string }): Promise<AuditEvent[]> {
     if (!this.isMockMode()) {
-      try {
-        const params: Record<string, string | undefined> = {};
-        if (filter?.taskId) params.task_id = filter.taskId;
-        if (filter?.principalId) params.principal_id = filter.principalId;
+      const params: Record<string, string | undefined> = {};
+      if (filter?.taskId) params.task_id = filter.taskId;
+      if (filter?.principalId) params.principal_id = filter.principalId;
 
-        // Try primary backend route /audit first, fallback to /audit/events
-        let res: unknown[];
-        try {
-          res = await httpFetch<unknown[]>('/audit', { params });
-        } catch {
-          res = await httpFetch<unknown[]>('/audit/events', { params });
-        }
-
-        if (Array.isArray(res)) {
-          return res.map(adaptAuditEvent);
-        }
-      } catch {
-        // Fallback to local session audit if not yet persisted
+      const res = await httpFetch<unknown[]>('/audit', { params });
+      if (Array.isArray(res)) {
+        return res.map(adaptAuditEvent);
       }
+      return [];
     }
 
     let list = [...this.auditEvents];
@@ -829,6 +833,31 @@ export class LaraApiClient {
       list = list.filter((e) => e.principal_id === filter.principalId);
     }
     return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  // --- GOVERNANCE ---
+
+  async getGovernancePrincipals(): Promise<Record<string, unknown>[]> {
+    if (!this.isMockMode()) {
+      const res = await httpFetch<Record<string, unknown>[]>('/governance/principals');
+      if (Array.isArray(res)) {
+        return res;
+      }
+      return [];
+    }
+    return SEEDED_PRINCIPALS as unknown as Record<string, unknown>[];
+  }
+
+  async getGovernanceDecisions(taskId?: string): Promise<Record<string, unknown>[]> {
+    if (!this.isMockMode()) {
+      const params = taskId ? { task_id: taskId } : undefined;
+      const res = await httpFetch<Record<string, unknown>[]>('/governance/decisions', { params });
+      if (Array.isArray(res)) {
+        return res;
+      }
+      return [];
+    }
+    return [];
   }
 
   private recordAudit(
