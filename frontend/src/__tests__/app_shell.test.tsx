@@ -3,17 +3,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../App';
 
 describe('LARA App Shell & Navigation', () => {
-  it('renders LARA brand header, synthetic demo badge, and workbench', async () => {
+  it('renders LARA brand header, staging environment badge, and workbench', async () => {
     render(<App />);
 
-    expect(screen.getByText('LARA')).toBeInTheDocument();
-    expect(screen.getByText('SYNTHETIC DEMO ENVIRONMENT')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('LARA')).toBeInTheDocument();
+    });
+    expect(screen.getByText('STAGING RUNTIME · lara-praneeth-stg-2026')).toBeInTheDocument();
     expect(screen.getByText('Enterprise Incident Workbench')).toBeInTheDocument();
     expect(screen.getByText('Start Investigation')).toBeInTheDocument();
   });
 
   it('navigates between tabs cleanly', async () => {
     render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Information Highways')).toBeInTheDocument();
+    });
 
     // Click Information Highways
     const highwaysTab = screen.getByText('Information Highways');

@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPrincipal(p);
         setAuthState('authenticated');
       })
-      .catch((err) => {
+      .catch(() => {
         if (api.isMockMode()) {
           const mockPrincipal = api.getCurrentPrincipal();
           setPrincipal(mockPrincipal);

@@ -85,6 +85,13 @@ export class LaraApiClient {
     return this.activePrincipal;
   }
 
+  private getEnsuredMockPrincipal(): Principal {
+    if (!this.activePrincipal) {
+      this.activePrincipal = SEEDED_PRINCIPALS[0];
+    }
+    return this.activePrincipal;
+  }
+
   // --- AUTHENTICATION ---
 
   /**
@@ -192,7 +199,7 @@ export class LaraApiClient {
         trace_id: accepted.trace_id,
         created_at: accepted.created_at,
         updated_at: accepted.created_at,
-        principal_id: this.activePrincipal.principal_id,
+        principal_id: this.activePrincipal?.principal_id || 'system',
         current_stage: 'INTAKE',
         evidence: [],
         agent_outputs: [],
@@ -203,12 +210,13 @@ export class LaraApiClient {
     }
 
     // Mock Mode
+    const active = this.getEnsuredMockPrincipal();
     const taskId = `task_${Date.now()}`;
     const traceId = `trace_${Math.random().toString(36).substring(2, 10)}`;
     const now = new Date().toISOString();
     const isSupervisor =
-      this.activePrincipal.roles.includes('supervisor') ||
-      this.activePrincipal.roles.includes('runtime_admin');
+      active.roles.includes('supervisor') ||
+      active.roles.includes('runtime_admin');
 
     const newTask: Task = {
       task_id: taskId,
@@ -219,7 +227,7 @@ export class LaraApiClient {
       trace_id: traceId,
       created_at: now,
       updated_at: now,
-      principal_id: this.activePrincipal.principal_id,
+      principal_id: this.activePrincipal?.principal_id || 'system',
       current_stage: 'ACTION_GATEWAY',
       active_agent: 'agent:verification',
       route_id: `route_${taskId}`,
@@ -256,8 +264,8 @@ export class LaraApiClient {
       approval_id: `appr_${taskId}`,
       task_id: taskId,
       trace_id: traceId,
-      requester_id: this.activePrincipal.principal_id,
-      requester_name: this.activePrincipal.display_name,
+      requester_id: active.principal_id,
+      requester_name: active.display_name,
       action: `Simulated Maintenance Dispatch for ${data.incident_id || 'P-204'}`,
       tool_name: 'tool:maintenance-request',
       risk_level: 'HIGH',
@@ -341,7 +349,7 @@ export class LaraApiClient {
         type: 'HIGHWAY_RESOLUTION',
         stage: 'HIGHWAY_RESOLUTION',
         timestamp: new Date(new Date(t.created_at).getTime() + 1000).toISOString(),
-        summary: `Dynamic Information Highway resolved for principal ${this.activePrincipal.display_name}`,
+        summary: `Dynamic Information Highway resolved for principal ${this.getEnsuredMockPrincipal().display_name}`,
       },
       {
         event_id: `ev3_${taskId}`,
@@ -389,7 +397,8 @@ export class LaraApiClient {
     }
 
     // Mock Mode role-dependent resolution
-    const roles = this.activePrincipal.roles;
+    const active = this.getEnsuredMockPrincipal();
+    const roles = active.roles;
     const isSupervisorOrAdmin = roles.includes('supervisor') || roles.includes('runtime_admin');
     const isAuditor = roles.includes('auditor');
 
@@ -397,7 +406,7 @@ export class LaraApiClient {
       return {
         route_id: `route_aud_${Date.now()}`,
         task_id: taskId || 'task_demo',
-        principal_id: this.activePrincipal.principal_id,
+        principal_id: this.activePrincipal?.principal_id || 'system',
         graph_version: 4,
         selected_path: ['workflow:incident-investigation'],
         selected_sources: [],
@@ -413,7 +422,7 @@ export class LaraApiClient {
       return {
         route_id: `route_sup_${Date.now()}`,
         task_id: taskId || 'task_demo',
-        principal_id: this.activePrincipal.principal_id,
+        principal_id: this.activePrincipal?.principal_id || 'system',
         graph_version: 4,
         selected_path: [
           'workflow:incident-investigation',
@@ -446,7 +455,7 @@ export class LaraApiClient {
     return {
       route_id: `route_op_${Date.now()}`,
       task_id: taskId || 'task_demo',
-      principal_id: this.activePrincipal.principal_id,
+      principal_id: this.activePrincipal?.principal_id || 'system',
       graph_version: 4,
       selected_path: [
         'workflow:incident-investigation',
@@ -579,7 +588,8 @@ export class LaraApiClient {
   }
 
   async approveCandidate(proposalId: string, reason: string): Promise<EvolutionProposal> {
-    if (!this.activePrincipal.roles.includes('runtime_admin')) {
+    const active = this.getEnsuredMockPrincipal();
+    if (!active.roles.includes('runtime_admin')) {
       throw new Error('Access Denied: Only Runtime Administrator can approve candidate evolution models.');
     }
 
@@ -599,7 +609,7 @@ export class LaraApiClient {
     if (!p) throw new Error(`Proposal ${proposalId} not found`);
 
     p.status = 'PROMOTED';
-    p.approved_by = this.activePrincipal.principal_id;
+    p.approved_by = active.principal_id;
 
     const targetAgent = MOCK_AGENTS.find((a) => a.agent_id === p.target_id);
     if (targetAgent) {
@@ -616,7 +626,7 @@ export class LaraApiClient {
       status: 'SUCCESS',
       details: {
         proposal_id: proposalId,
-        approved_by: this.activePrincipal.principal_id,
+        approved_by: active.principal_id,
         reason,
         new_active_version: p.candidate_version,
       },
@@ -626,7 +636,8 @@ export class LaraApiClient {
   }
 
   async rollbackCandidate(proposalId: string, reason: string): Promise<EvolutionProposal> {
-    if (!this.activePrincipal.roles.includes('runtime_admin')) {
+    const active = this.getEnsuredMockPrincipal();
+    if (!active.roles.includes('runtime_admin')) {
       throw new Error('Access Denied: Only Runtime Administrator can rollback prompt versions.');
     }
 
@@ -676,7 +687,8 @@ export class LaraApiClient {
       return adaptPolicyDecisionResponse(res);
     }
 
-    const roles = this.activePrincipal.roles;
+    const active = this.getEnsuredMockPrincipal();
+    const roles = active.roles;
     const isSupervisor = roles.includes('supervisor');
     const isAdmin = roles.includes('runtime_admin');
     const isAuditor = roles.includes('auditor');
@@ -866,7 +878,7 @@ export class LaraApiClient {
     const evt: AuditEvent = {
       event_id: `evt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
       timestamp: new Date().toISOString(),
-      principal_id: this.activePrincipal.principal_id,
+      principal_id: this.activePrincipal?.principal_id || 'system',
       trace_id: event.trace_id || `trace_${Math.random().toString(36).substring(2, 9)}`,
       event_type: event.event_type,
       action: event.action,

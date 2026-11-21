@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { EnvironmentBadge, IconButton } from '../ui';
 import { useAuth } from '../../features/auth/AuthContext';
+import { api } from '../../api/client';
 
 export type PageId = 'overview'|'investigations'|'highways'|'agents'|'evolution'|'approvals'|'governance'|'audit';
 export const pageNames: Record<PageId, string> = {
@@ -37,7 +38,7 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
   const [userMenu, setUserMenu] = useState(false);
   const [help, setHelp] = useState(false);
 
-  const { principal, allPrincipals, switchIdentity } = useAuth();
+  const { principal, allPrincipals, switchIdentity, logout } = useAuth();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,9 +56,9 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
   const filtered = nav.map(g => ({ ...g, items: g.items.filter(i => i.label.toLowerCase().includes(search.toLowerCase())) })).filter(g => g.items.length);
   const go = (id: PageId) => { onNavigate(id); setMobileMenu(false); };
 
-  const activeName = principal?.display_name || 'Maya Operator';
+  const activeName = principal?.display_name || 'Authenticated User';
   const activeRole = principal?.roles?.[0] ? (principal.roles[0].charAt(0).toUpperCase() + principal.roles[0].slice(1)) : (role || 'Operator');
-  const initials = activeName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const initials = activeName.split(' ').filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'LR';
 
   return (
     <div className={`app-shell ${sidebarOpen ? 'sidebar-open' : 'sidebar-collapsed'}`}>
@@ -165,7 +166,7 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
             <div className="header-pop-wrap">
               <button
                 className="identity-button"
-                aria-label={`${activeName} (${activeRole}) - Switch demo principal`}
+                aria-label={api.isMockMode() ? `${activeName} (${activeRole}) - Switch demo principal` : `${activeName} (${activeRole}) - Account options`}
                 aria-haspopup="menu"
                 aria-expanded={userMenu}
                 onClick={() => setUserMenu(v => !v)}
@@ -179,29 +180,50 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
               </button>
               {userMenu && (
                 <div className="popover-menu identity-menu" role="menu">
-                  <strong>Switch demo identity</strong>
-                  {allPrincipals.map(p => (
-                    <button
-                      key={p.principal_id}
-                      className={principal?.principal_id === p.principal_id ? 'current' : ''}
-                      onClick={async () => {
-                        await switchIdentity(p.principal_id);
-                        onRoleChange?.(p.roles[0]);
-                        setUserMenu(false);
-                      }}
-                    >
-                      {p.display_name}
-                      {principal?.principal_id === p.principal_id ? ' ✓' : ''}
-                    </button>
-                  ))}
+                  <strong>Account Profile</strong>
+                  <div style={{ margin: '4px 0 10px', fontSize: '11px', color: '#55657B', lineHeight: '1.5' }}>
+                    <div><strong>ID:</strong> <code className="mono">{principal?.principal_id || 'unknown'}</code></div>
+                    <div><strong>Dept:</strong> {principal?.attributes?.department || 'Operations'}</div>
+                    <div><strong>Clearance:</strong> {principal?.attributes?.clearance || 'internal'}</div>
+                  </div>
+                  {api.isMockMode() && (
+                    <>
+                      <hr style={{ margin: '8px 0', border: 0, borderTop: '1px solid #E5EAF1' }} />
+                      <strong>Switch demo identity</strong>
+                      {allPrincipals.map(p => (
+                        <button
+                          key={p.principal_id}
+                          className={principal?.principal_id === p.principal_id ? 'current' : ''}
+                          onClick={async () => {
+                            await switchIdentity(p.principal_id);
+                            onRoleChange?.(p.roles[0]);
+                            setUserMenu(false);
+                          }}
+                        >
+                          {p.display_name}
+                          {principal?.principal_id === p.principal_id ? ' ✓' : ''}
+                        </button>
+                      ))}
+                      <hr style={{ margin: '8px 0', border: 0, borderTop: '1px solid #E5EAF1' }} />
+                    </>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setUserMenu(false);
+                      await logout();
+                    }}
+                    style={{ color: '#D93025', fontWeight: 600, padding: '8px 4px' }}
+                  >
+                    Sign Out
+                  </button>
                 </div>
               )}
             </div>
           </div>
         </header>
-        <div className="environment-line"><span /> DEMO WORKSPACE <span className="line-separator">·</span> Sample industrial operations data</div>
+        <div className="environment-line"><span /> STAGING RUNTIME <span className="line-separator">·</span> Project: lara-praneeth-stg-2026 <span className="line-separator">·</span> Firestore & Policy Engine Active</div>
         <div className="page-content">{children}</div>
-        <footer className="app-footer"><span>© 2026 LARA Runtime</span><span>Workspace: North Plant <i /> Runtime v0.8.4-demo</span></footer>
+        <footer className="app-footer"><span>© 2026 LARA Runtime</span><span>Workspace: demo-enterprise <i /> Runtime v1.0.0-staging</span></footer>
       </main>
       {mobileMenu && <button className="mobile-scrim" aria-label="Close navigation" onClick={() => setMobileMenu(false)} />}
     </div>

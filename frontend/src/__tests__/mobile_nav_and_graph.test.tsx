@@ -6,7 +6,7 @@ describe('Mobile Navigation & Highways Graph Interactions', () => {
   it('opens and closes mobile navigation drawer via menu button, backdrop and Escape key', async () => {
     const { container } = render(<App />);
 
-    const menuBtn = screen.getByLabelText(/Open navigation/i);
+    const menuBtn = await screen.findByLabelText(/Open navigation/i);
     expect(menuBtn).toBeInTheDocument();
     expect(menuBtn).toHaveAttribute('aria-expanded', 'false');
 
@@ -45,7 +45,7 @@ describe('Mobile Navigation & Highways Graph Interactions', () => {
     render(<App />);
 
     // Navigate to Highways
-    const highwaysLink = screen.getAllByText('Information Highways')[0];
+    const highwaysLink = await screen.findByText('Information Highways');
     fireEvent.click(highwaysLink);
     await waitFor(() => {
       expect(screen.getByText('Dynamic Task Route Resolution')).toBeInTheDocument();

@@ -16,7 +16,7 @@ export function StatusBadge({ status }: { status: string }) {
   const tone = s.includes('resolved') || s.includes('healthy') || s.includes('verified') || s.includes('approved') || s.includes('promoted') ? 'green' : s.includes('critical') || s.includes('blocked') || s.includes('failed') || s.includes('denied') ? 'red' : s.includes('awaiting') || s.includes('review') || s.includes('stale') || s.includes('candidate') ? 'amber' : s.includes('active') || s.includes('investigating') || s.includes('current') ? 'blue' : 'neutral';
   return <Badge tone={tone} dot>{status}</Badge>;
 }
-export function EnvironmentBadge() { return <span className="environment-badge"><span/> SYNTHETIC DEMO ENVIRONMENT</span>; }
+export function EnvironmentBadge() { return <span className="environment-badge"><span/> STAGING RUNTIME · lara-praneeth-stg-2026</span>; }
 export function TextField({ label, value, onChange, placeholder, type = 'text', hint, disabled }: { label?: string; value?: string; onChange?: (v:string)=>void; placeholder?: string; type?: string; hint?: string; disabled?: boolean }) {
   return <label className="field">{label && <span className="field-label">{label}</span>}<input value={value} onChange={e=>onChange?.(e.target.value)} type={type} placeholder={placeholder} disabled={disabled}/>{hint && <small>{hint}</small>}</label>;
 }

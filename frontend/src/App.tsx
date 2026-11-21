@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
-import { AuthProvider } from './features/auth/AuthContext';
+import { AuthProvider, useAuth } from './features/auth/AuthContext';
+import { LoginPage } from './features/auth/LoginPage';
 import { AppShell, PageId } from './components/layout/AppShell';
 import { IconButton } from './components/ui';
 import { api } from './api/client';
@@ -18,6 +19,7 @@ import {
 } from './features/Pages';
 
 function MainApp() {
+  const { authState, isAuthenticated, principal } = useAuth();
   const [page, setPage] = useState<PageId>('overview');
   const [newOpen, setNewOpen] = useState(false);
   const [selectedInvestigation, setSelectedInvestigation] = useState('');
@@ -27,6 +29,21 @@ function MainApp() {
     setToast(message);
     window.setTimeout(() => setToast(''), 3200);
   };
+
+  if (authState === 'loading') {
+    return (
+      <div className="auth-loading-screen" role="status" aria-live="polite">
+        <div className="auth-loading-card">
+          <div className="spinner" />
+          <span>Restoring LARA runtime session...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || authState === 'unauthenticated' || !principal) {
+    return <LoginPage />;
+  }
 
   const createInvestigation = async (title: string, asset: string, scope?: string) => {
     try {

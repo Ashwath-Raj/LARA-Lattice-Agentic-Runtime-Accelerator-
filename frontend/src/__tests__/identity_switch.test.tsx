@@ -7,6 +7,10 @@ describe('Identity Switch & Route Re-fetch Verification', () => {
   it('switches identity from Operator to Supervisor and re-resolves Information Highway route', async () => {
     render(<App />);
 
+    await waitFor(() => {
+      expect(screen.getByText('Information Highways')).toBeInTheDocument();
+    });
+
     // Go to Information Highways tab
     fireEvent.click(screen.getByText('Information Highways'));
 

@@ -44,7 +44,7 @@ export function adaptPrincipalResponse(raw: unknown): Principal {
       clearance: String((data.attributes as Record<string, unknown>)?.clearance || 'internal'),
       project: (data.attributes as Record<string, unknown>)?.project as string | undefined,
       employment_status: String((data.attributes as Record<string, unknown>)?.employment_status || 'active'),
-      ...((data.attributes as Record<string, unknown>) || {}),
+      ...(data.attributes as Record<string, unknown>),
     },
   };
 }
