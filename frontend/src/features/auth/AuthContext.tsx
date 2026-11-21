@@ -66,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     setIsLoading(true);
+    setAuthError(null);
     try {
       await api.logout();
       setPrincipal(null);
@@ -73,8 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setVersionChangeNonce((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to logout:', err);
-      setPrincipal(null);
-      setAuthState('unauthenticated');
+      const msg = err instanceof Error ? err.message : 'Server session logout failed';
+      setAuthError(msg);
+      // Do not silently imply that the server-side session has definitely been invalidated
+      throw err;
     } finally {
       setIsLoading(false);
     }

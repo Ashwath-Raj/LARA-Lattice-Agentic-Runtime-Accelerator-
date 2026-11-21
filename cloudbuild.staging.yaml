@@ -1,0 +1,89 @@
+# Dedicated Cloud Build configuration for LARA Google Cloud Staging
+# Target: lara-runtime-staging in asia-south1 (Project: lara-praneeth-stg-2026)
+# Quality Gates:
+# 1. Frontend dependency installation (npm ci)
+# 2. Frontend static analysis (oxlint src)
+# 3. Frontend unit tests (vitest run --run)
+# 4. Frontend production build (tsc -b && vite build)
+# 5. Backend pytest test suite (pytest -v)
+# 6. Container build (docker build with SHORT_SHA and latest tags)
+# 7. Container push to Artifact Registry
+# 8. Cloud Run staging deployment with explicit staging safeguards
+
+substitutions:
+  _REGION: asia-south1
+  _SERVICE: lara-runtime-staging
+  _REPOSITORY: lara-staging-repo
+  _BUILD_SA: lara-build-sa@lara-praneeth-stg-2026.iam.gserviceaccount.com
+  _RUNTIME_SA: lara-runtime-sa@lara-praneeth-stg-2026.iam.gserviceaccount.com
+  _GCS_BUCKET: lara-praneeth-stg-2026-lara-assets
+  _FIRESTORE_DB: (default)
+
+# Service account for Cloud Build execution
+serviceAccount: 'projects/${PROJECT_ID}/serviceAccounts/${_BUILD_SA}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+steps:
+  # Gate 1: Frontend installation, static analysis, unit tests, and production build
+  - name: node:22-alpine
+    id: 'frontend-gate'
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        cd frontend
+        npm ci
+        npx oxlint src
+        npm test -- --run
+        npm run build
+
+  # Gate 2: Backend pytest test suite execution
+  - name: python:3.11-slim
+    id: 'backend-gate'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install --no-cache-dir -r requirements.txt
+        pytest -v
+
+  # Gate 3: Build multi-stage container image with immutable commit SHA tag
+  - name: gcr.io/cloud-builders/docker
+    id: 'docker-build'
+    args:
+      - build
+      - -t
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'
+      - -t
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:latest'
+      - .
+
+  # Gate 4: Push container image to Artifact Registry
+  - name: gcr.io/cloud-builders/docker
+    id: 'docker-push'
+    args:
+      - push
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'
+
+  # Gate 5: Deploy staging revision to Cloud Run
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: 'cloud-run-deploy'
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--service-account=${_RUNTIME_SA}'
+      - '--port=8080'
+      - '--max-instances=2'
+      - '--concurrency=25'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=APP_ENV=staging,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},FIRESTORE_DATABASE=(default),GCS_BUCKET=${_GCS_BUCKET},LARA_USE_LIVE_FIRESTORE=true,LARA_USE_LIVE_VERTEX_AI=false,GOBOXD_KILL_SWITCH=true,COOKIE_SECURE=true'
+      - '--set-secrets=SECRET_KEY=lara-secret-key:latest,GOBOXD_INTERNAL_AUTH_TOKEN=lara-goboxd-token:latest'
+
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE}:${SHORT_SHA}'

@@ -100,7 +100,27 @@ describe('Phase 2 & Phase 6: Live Authentication & Integration Verification', ()
   });
 
   // Scenario 4: Logout and session invalidation (POST /api/v1/auth/logout)
-  it('4. calls POST /api/v1/auth/logout and clears active principal', async () => {
+  it('4. calls POST /api/v1/auth/logout and propagates failure without silently clearing session', async () => {
+    // Failure case: server error during logout must NOT silently clear active principal
+    client['activePrincipal'] = {
+      principal_id: 'usr_admin_01',
+      display_name: 'Elena Rostova',
+      roles: ['runtime_admin'],
+      attributes: { department: 'Engineering', clearance: 'restricted' },
+    };
+
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ detail: 'Failed to revoke session on server' }),
+    });
+
+    await expect(client.logout()).rejects.toThrow();
+    expect(client.getCurrentPrincipal()?.principal_id).toBe('usr_admin_01');
+
+    // Success case
     let logoutCalled = false;
     globalThis.fetch = vi.fn().mockImplementation(async (url: string) => {
       if (url.includes('/auth/logout')) {

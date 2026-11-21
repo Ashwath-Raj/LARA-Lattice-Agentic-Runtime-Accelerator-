@@ -22,13 +22,6 @@ export const pageNames: Record<PageId, string> = {
   audit: 'Audit Trail'
 };
 
-const nav = [
-  { group: 'Workspace', items: [{ id: 'overview' as PageId, label: 'Overview', icon: LayoutDashboard }, { id: 'investigations' as PageId, label: 'Investigations', icon: ListChecks, badge: '12' }] },
-  { group: 'Intelligence', items: [{ id: 'highways' as PageId, label: 'Information Highways', icon: Network }, { id: 'agents' as PageId, label: 'Agents', icon: Workflow }] },
-  { group: 'Policy & Control', items: [{ id: 'approvals' as PageId, label: 'Approvals', icon: ShieldCheck, badge: '3' }, { id: 'governance' as PageId, label: 'Governance', icon: Users }, { id: 'evolution' as PageId, label: 'Evolution Lab', icon: GitBranch }] },
-  { group: 'Observability', items: [{ id: 'audit' as PageId, label: 'Audit Trail', icon: FileClock }] }
-];
-
 export function AppShell({ page, onNavigate, children, role, onRoleChange }: React.PropsWithChildren<{ page: PageId; onNavigate: (p: PageId) => void; role?: string; onRoleChange?: (r: string) => void }>) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenu, setMobileMenu] = useState(false);
@@ -37,8 +30,39 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
   const [notifications, setNotifications] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [help, setHelp] = useState(false);
+  const [tasksCount, setTasksCount] = useState<number | null>(null);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number | null>(null);
+  const [recentTaskNotice, setRecentTaskNotice] = useState<string | null>(null);
+  const [notificationError, setNotificationError] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const { principal, allPrincipals, switchIdentity, logout } = useAuth();
+
+  useEffect(() => {
+    let isMounted = true;
+    Promise.all([
+      api.getApprovals().catch(() => null),
+      api.getRecentTasks().catch(() => null),
+    ]).then(([approvals, tasks]) => {
+      if (!isMounted) return;
+      if (approvals !== null) {
+        const pending = approvals.filter(a => a.status === 'PENDING').length;
+        setPendingApprovalsCount(pending);
+      } else {
+        setNotificationError(true);
+      }
+      if (tasks !== null) {
+        setTasksCount(tasks.length);
+        if (tasks.length > 0) {
+          const latest = tasks[0];
+          setRecentTaskNotice(`Latest investigation: ${latest.title || latest.task_id} (${latest.current_stage})`);
+        } else {
+          setRecentTaskNotice('No active investigations recorded in tenant.');
+        }
+      }
+    });
+    return () => { isMounted = false; };
+  }, [principal]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,6 +76,13 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const nav = [
+    { group: 'Workspace', items: [{ id: 'overview' as PageId, label: 'Overview', icon: LayoutDashboard }, { id: 'investigations' as PageId, label: 'Investigations', icon: ListChecks, badge: tasksCount !== null && tasksCount > 0 ? String(tasksCount) : undefined }] },
+    { group: 'Intelligence', items: [{ id: 'highways' as PageId, label: 'Information Highways', icon: Network }, { id: 'agents' as PageId, label: 'Agents', icon: Workflow }] },
+    { group: 'Policy & Control', items: [{ id: 'approvals' as PageId, label: 'Approvals', icon: ShieldCheck, badge: pendingApprovalsCount !== null && pendingApprovalsCount > 0 ? String(pendingApprovalsCount) : undefined }, { id: 'governance' as PageId, label: 'Governance', icon: Users }, { id: 'evolution' as PageId, label: 'Evolution Lab', icon: GitBranch }] },
+    { group: 'Observability', items: [{ id: 'audit' as PageId, label: 'Audit Trail', icon: FileClock }] }
+  ];
 
   const filtered = nav.map(g => ({ ...g, items: g.items.filter(i => i.label.toLowerCase().includes(search.toLowerCase())) })).filter(g => g.items.length);
   const go = (id: PageId) => { onNavigate(id); setMobileMenu(false); };
@@ -157,8 +188,20 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
               {notifications && (
                 <div className="popover-menu notification-menu">
                   <strong>Notifications</strong>
-                  <p><span className="notification-dot" /> 3 approvals need attention</p>
-                  <p><span className="notification-dot muted" /> Verification completed for INC-204</p>
+                  {notificationError ? (
+                    <p className="text-secondary" style={{ fontSize: '12px', margin: '4px 0' }}>Notification service unavailable.</p>
+                  ) : (
+                    <>
+                      {pendingApprovalsCount !== null && pendingApprovalsCount > 0 ? (
+                        <p><span className="notification-dot" /> {pendingApprovalsCount} approval{pendingApprovalsCount > 1 ? 's' : ''} need attention</p>
+                      ) : (
+                        <p><span className="notification-dot muted" /> No pending approvals requiring review</p>
+                      )}
+                      {recentTaskNotice && (
+                        <p><span className="notification-dot muted" /> {recentTaskNotice}</p>
+                      )}
+                    </>
+                  )}
                   <button onClick={() => { setNotifications(false); go('approvals'); }}>View approvals</button>
                 </div>
               )}
@@ -209,13 +252,23 @@ export function AppShell({ page, onNavigate, children, role, onRoleChange }: Rea
                   )}
                   <button
                     onClick={async () => {
-                      setUserMenu(false);
-                      await logout();
+                      setLogoutError(null);
+                      try {
+                        await logout();
+                        setUserMenu(false);
+                      } catch (err) {
+                        setLogoutError(err instanceof Error ? err.message : 'Server logout failed. Session may remain active on server.');
+                      }
                     }}
                     style={{ color: '#D93025', fontWeight: 600, padding: '8px 4px' }}
                   >
                     Sign Out
                   </button>
+                  {logoutError && (
+                    <div style={{ color: '#C5221F', fontSize: '11px', marginTop: '6px', lineHeight: '1.3' }}>
+                      {logoutError}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

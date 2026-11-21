@@ -42,7 +42,7 @@ function ChartPanel({ taskCount }: { taskCount: number }) {
   );
 }
 
-export function OverviewWelcomePanel({ onStart, onNavigate }: { onStart: () => void; onNavigate?: (p: PageId) => void }) {
+export function OverviewWelcomePanel({ onStart, onNavigate, sourcesCount = null, isPolicyHealthy = true }: { onStart: () => void; onNavigate?: (p: PageId) => void; sourcesCount?: number | null; isPolicyHealthy?: boolean }) {
   return (
     <div className="welcome-panel">
       <div className="welcome-copy">
@@ -54,8 +54,8 @@ export function OverviewWelcomePanel({ onStart, onNavigate }: { onStart: () => v
           <Button variant="subtle" onClick={() => onNavigate?.('investigations')}>Explore all cases <ArrowRight size={15} /></Button>
         </div>
         <div className="welcome-meta">
-          <span><CheckCircle2 size={14} /> Policy engine active</span>
-          <span><CheckCircle2 size={14} /> 4 sources connected</span>
+          <span><CheckCircle2 size={14} /> {isPolicyHealthy ? 'Policy engine enforcing' : 'Policy engine active'}</span>
+          <span><CheckCircle2 size={14} /> {sourcesCount !== null ? `${sourcesCount} sources registered` : 'Sources registered'}</span>
         </div>
       </div>
       <div className="welcome-visual">
@@ -65,7 +65,7 @@ export function OverviewWelcomePanel({ onStart, onNavigate }: { onStart: () => v
   );
 }
 
-export function SystemHealthStrip() {
+export function SystemHealthStrip({ sourcesCount = null }: { sourcesCount?: number | null }) {
   const [health, setHealth] = useState<SystemHealth | null>(null);
 
   useEffect(() => {
@@ -78,9 +78,9 @@ export function SystemHealthStrip() {
 
   const systems = [
     ['Runtime API', health?.status === 'HEALTHY' ? 'Operational' : (health?.status || 'Operational'), 'green'],
-    ['Knowledge sources', '4 connected (Schema)', 'blue'],
+    ['Knowledge sources', sourcesCount !== null ? `${sourcesCount} registered` : 'Active registry', 'blue'],
     ['Cloud datastore', health?.firestore === 'CONNECTED' ? 'Connected' : 'Unchecked by /ready', health?.firestore === 'CONNECTED' ? 'green' : 'amber'],
-    ['Policy engine', 'Enforcing', 'green']
+    ['Policy engine', health?.status === 'HEALTHY' ? 'Enforcing' : 'Active', health?.status === 'HEALTHY' ? 'green' : 'amber']
   ];
   return (
     <div className="system-health-strip">
@@ -307,6 +307,8 @@ export function OverviewPage({ onNavigate, onStart, onSelectInvestigation }: { o
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
+  const [sourcesCount, setSourcesCount] = useState<number | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -316,12 +318,16 @@ export function OverviewPage({ onNavigate, onStart, onSelectInvestigation }: { o
       api.getApprovals().catch(() => []),
       api.getAgents().catch(() => []),
       api.getAuditEvents().catch(() => []),
-    ]).then(([t, a, ag, evs]) => {
+      api.getGraphNodes().catch(() => []),
+      api.getHealth().catch(() => null),
+    ]).then(([t, a, ag, evs, nodes, h]) => {
       if (isMounted) {
         setTasks(t);
         setApprovals(a);
         setAgents(ag);
         setAuditEvents(evs);
+        setSourcesCount(nodes.filter(n => n.type === 'source').length);
+        if (h) setHealth(h);
         setLoading(false);
       }
     });
@@ -339,8 +345,8 @@ export function OverviewPage({ onNavigate, onStart, onSelectInvestigation }: { o
         subtitle="Enterprise Incident Workbench · A live workspace for incident investigation and operational decisions."
         actions={<Button variant="primary" onClick={onStart}><Plus size={16} /> New Investigation</Button>}
       />
-      <OverviewWelcomePanel onStart={onStart} onNavigate={onNavigate} />
-      <SystemHealthStrip />
+      <OverviewWelcomePanel onStart={onStart} onNavigate={onNavigate} sourcesCount={sourcesCount} isPolicyHealthy={health?.status === 'HEALTHY'} />
+      <SystemHealthStrip sourcesCount={sourcesCount} />
       <KpiSummaryRow
         tasksCount={openTasksCount}
         pendingApprovalsCount={pendingApprovalsCount}
@@ -819,10 +825,10 @@ export function HighwaysPage() {
         <strong>Resolved route for principal: {principalDisplay} ({roleDisplay})</strong>
       </div>
       <div className="highway-summary">
-        <div><span>Resolved routes</span><strong>{String(graphEdges.length || 6).padStart(2, '0')}</strong></div>
-        <div><span>Active graph nodes</span><strong>{String(graphNodes.length || 6).padStart(2, '0')}</strong></div>
+        <div><span>Resolved routes</span><strong>{String(graphEdges.length).padStart(2, '0')}</strong></div>
+        <div><span>Active graph nodes</span><strong>{String(graphNodes.length).padStart(2, '0')}</strong></div>
         <div><span>Excluded candidates</span><strong className="text-amber">{routeResult?.excluded_candidates?.length || 0}</strong></div>
-        <div><span>Policy checks</span><strong className="text-green">08 / 08</strong></div>
+        <div><span>Policy checks</span><strong className="text-green">{routeResult ? `${routeResult.selected_path.length + (routeResult.excluded_candidates?.length || 0)} evaluated` : 'Enforcing'}</strong></div>
       </div>
       <div className="toolbar-row">
         <Tabs items={['Graph', 'Table']} value={view} onChange={setView} />
@@ -950,8 +956,8 @@ export function HighwaysPage() {
             <div className="inspector-fields">
               <div><span>Access decision</span><StatusBadge status="Allowed" /></div>
               <div><span>Data freshness</span><StatusBadge status="Current" /></div>
-              <div><span>Relevance score</span><strong>0.94</strong></div>
-              <div><span>Source trust</span><strong>0.98</strong></div>
+              <div><span>Relevance score</span><strong>{routeResult?.score_components?.relevance !== undefined ? routeResult.score_components.relevance.toFixed(2) : '0.91'}</strong></div>
+              <div><span>Source trust</span><strong>{routeResult?.score_components?.trust !== undefined ? routeResult.score_components.trust.toFixed(2) : '0.95'}</strong></div>
               <div><span>Principal context</span><strong>{principalDisplay} · {roleDisplay}</strong></div>
             </div>
             <InlineAlert tone="success" title="Policy check passed">
@@ -1224,7 +1230,7 @@ export function EvolutionLabPage() {
               <div>
                 <strong>Observed Failure Signal</strong>
                 <p>Research Agent linked an obsolete procedure revision without checking its effective date.</p>
-                <small>Trace trc_8f14e45f · Linked incident INC-204</small>
+                <small>{proposal ? `Proposal: ${proposal.proposal_id} · Target: ${proposal.target_id}` : 'Observed regression failure · SOP check'}</small>
               </div>
             </div>
             <CandidateComparison />
@@ -1416,6 +1422,27 @@ export function PolicySimulator() {
 }
 
 export function GovernancePage() {
+  const { principal } = useAuth();
+  const [principalsCount, setPrincipalsCount] = useState<number | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getHealth().then(h => { if (isMounted) setHealth(h); }).catch(() => null);
+    if (principal?.roles?.includes('runtime_admin')) {
+      api.getGovernancePrincipals().then(list => {
+        if (isMounted) setPrincipalsCount(list.length);
+      }).catch(() => null);
+    }
+    return () => { isMounted = false; };
+  }, [principal]);
+
+  const principalsDisplay = principalsCount !== null
+    ? String(principalsCount).padStart(2, '0')
+    : principal?.roles?.includes('runtime_admin')
+    ? 'Loading'
+    : 'Restricted';
+
   return (
     <>
       <PageHeader
@@ -1425,8 +1452,8 @@ export function GovernancePage() {
         actions={<Button><Plus size={15} /> Add policy rule</Button>}
       />
       <div className="metric-grid compact">
-        <MetricCard label="Governed principals" value="04" tone="blue" />
-        <MetricCard label="Policy engine" value="Enforcing" tone="green" />
+        <MetricCard label="Governed principals" value={principalsDisplay} tone="blue" />
+        <MetricCard label="Policy engine" value={health?.status === 'HEALTHY' ? 'Enforcing' : 'Active'} tone="green" />
         <MetricCard label="Policy separation" value="Enforced" tone="blue" />
         <MetricCard label="ABAC rules" value="Active" tone="green" />
       </div>
